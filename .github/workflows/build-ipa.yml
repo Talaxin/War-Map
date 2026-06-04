@@ -1,0 +1,54 @@
+name: Build War Map IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "WarMap/**"
+      - "WarMap.xcodeproj/**"
+      - ".github/workflows/build-ipa.yml"
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate blank icons
+        run: python3 scripts/generate_blank_icon.py
+
+      - name: Build archive
+        run: |
+          xcodebuild \
+            -project WarMap.xcodeproj \
+            -scheme WarMap \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/WarMap.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export unsigned IPA
+        run: |
+          mkdir -p build/ipa-export
+          APP_PATH="build/WarMap.xcarchive/Products/Applications/WarMap.app"
+          mkdir -p build/ipa-export/Payload
+          cp -R "$APP_PATH" build/ipa-export/Payload/
+          cd build/ipa-export && zip -qr ../WarMap.ipa Payload
+
+      - name: Refresh repo.json size
+        run: python3 release_esign.py --description "CI-built War Map IPA."
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WarMap-ipa
+          path: build/WarMap.ipa
+
+      - name: Upload repo.json artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-json
+          path: repo.json
