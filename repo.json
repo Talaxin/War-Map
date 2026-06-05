@@ -16,18 +16,18 @@
       "developerName": "Talaxin",
       "subtitle": "Wardriving map (placeholder)",
       "localizedDescription": "Placeholder War Map build for Feather sideload testing. Replace build/WarMap.ipa with an Xcode or CI-signed build before installing on device.",
-      "version": "0.0.1",
+      "version": "0.2.0",
       "versionDate": "2026-06-05T02:20:10+00:00",
-      "versionDescription": "CI-built War Map IPA.",
+      "versionDescription": "Route line, live turn-by-turn directions, and voice guidance.",
       "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
       "iconURL": "https://raw.githubusercontent.com/Talaxin/War-Map/main/warmap.png",
       "tintColor": "#808080",
       "category": "navigation",
       "versions": [
         {
-          "version": "0.0.1",
+          "version": "0.2.0",
           "date": "2026-06-05T02:20:10+00:00",
-          "localizedDescription": "CI-built War Map IPA.",
+          "localizedDescription": "Route line, live turn-by-turn directions, and voice guidance.",
           "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
           "size": 12500,
           "minOSVersion": "15.0"

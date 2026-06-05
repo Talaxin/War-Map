@@ -124,7 +124,7 @@
 			children = (
 				A10000020000000000000014 /* MapCanvasView.swift */,
 				A10000020000000000000015 /* RoutePlannerView.swift */,
-				A10000020000000000000020 /* DirectionsBannerView.swift */,
+				A100000200000000000020 /* DirectionsBannerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
