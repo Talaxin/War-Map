@@ -19,12 +19,25 @@ final class RoutePlannerViewModel: ObservableObject {
     @Published private(set) var isResolvingSearch = false
     @Published var searchError: String?
 
+    @Published private(set) var route: MKRoute?
+    @Published private(set) var isCalculatingRoute = false
+    @Published private(set) var isNavigating = false
+    @Published private(set) var followUserOnMap = false
+    @Published private(set) var guidance = NavigationGuidanceState()
+
     let locationManager = LocationManager()
     private let searchService = AddressSearchService()
+    private let directionsService = RouteDirectionsService()
+    private let guidanceEngine = NavigationGuidanceEngine()
+    private let voiceGuidance = VoiceGuidanceService()
+
+    private var routeCalculationTask: Task<Void, Never>?
 
     var searchCompletions: [MKLocalSearchCompletion] {
         searchService.completions
     }
+
+    var hasRoute: Bool { route != nil }
 
     var startDisplayText: String {
         if startUsesCurrentLocation {
@@ -34,6 +47,16 @@ final class RoutePlannerViewModel: ObservableObject {
     }
 
     var mapRegion: MKCoordinateRegion {
+        if isNavigating, let current = locationManager.currentLocation?.coordinate {
+            return MKCoordinateRegion(
+                center: current,
+                latitudinalMeters: 1_500,
+                longitudinalMeters: 1_500
+            )
+        }
+        if let route, !isNavigating {
+            return MKCoordinateRegion(route.polyline.boundingMapRect)
+        }
         let points = [startPlace, destinationPlace].compactMap(\.?.coordinate)
         guard !points.isEmpty else {
             if let current = locationManager.currentLocation?.coordinate {
@@ -116,6 +139,7 @@ final class RoutePlannerViewModel: ObservableObject {
         searchService.clear()
         focusedField = nil
         refreshStartFromCurrentLocation()
+        scheduleRouteCalculation()
     }
 
     func refreshStartFromCurrentLocation() {
@@ -147,6 +171,7 @@ final class RoutePlannerViewModel: ObservableObject {
             }
             searchService.clear()
             focusedField = nil
+            scheduleRouteCalculation()
         } catch {
             searchError = error.localizedDescription
         }
@@ -167,6 +192,8 @@ final class RoutePlannerViewModel: ObservableObject {
 
         if oldDestPlace == nil && oldStartUsesLocation {
             useCurrentLocationForStart()
+        } else {
+            scheduleRouteCalculation()
         }
     }
 
@@ -177,5 +204,86 @@ final class RoutePlannerViewModel: ObservableObject {
 
     func handleDestinationQueryChange() {
         updateSearchQuery()
+    }
+
+    func handleLocationUpdate() {
+        if startUsesCurrentLocation {
+            refreshStartFromCurrentLocation()
+        }
+        guard isNavigating, let location = locationManager.currentLocation else { return }
+        if guidanceEngine.update(userLocation: location) {
+            announceGuidanceIfNeeded()
+        }
+        guidance = guidanceEngine.state
+        if guidance.arrived {
+            stopNavigation()
+        }
+    }
+
+    func startNavigation() {
+        guard route != nil else { return }
+        isNavigating = true
+        followUserOnMap = true
+        focusedField = nil
+        searchService.clear()
+        locationManager.startNavigationUpdates()
+        if let location = locationManager.currentLocation {
+            _ = guidanceEngine.update(userLocation: location)
+            guidance = guidanceEngine.state
+            announceGuidanceIfNeeded()
+        }
+    }
+
+    func stopNavigation() {
+        isNavigating = false
+        followUserOnMap = false
+        locationManager.stopNavigationUpdates()
+        voiceGuidance.stop()
+    }
+
+    func scheduleRouteCalculation() {
+        routeCalculationTask?.cancel()
+        guard let startPlace, let destinationPlace else {
+            clearRoute()
+            return
+        }
+        routeCalculationTask = Task {
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            await calculateRoute(from: startPlace, to: destinationPlace)
+        }
+    }
+
+    private func calculateRoute(from start: MapPlace, to destination: MapPlace) async {
+        if isNavigating { stopNavigation() }
+        isCalculatingRoute = true
+        searchError = nil
+        defer { isCalculatingRoute = false }
+
+        do {
+            let newRoute = try await directionsService.calculateRoute(from: start, to: destination)
+            route = newRoute
+            guidanceEngine.load(route: newRoute)
+            guidance = guidanceEngine.state
+        } catch {
+            clearRoute()
+            if !Task.isCancelled {
+                searchError = error.localizedDescription
+            }
+        }
+    }
+
+    private func clearRoute() {
+        route = nil
+        guidanceEngine.reset()
+        guidance = guidanceEngine.state
+    }
+
+    private func announceGuidanceIfNeeded() {
+        guard let text = guidanceEngine.shouldAnnounceStep() else { return }
+        if guidance.arrived {
+            guidanceEngine.markArrivalAnnounced()
+        }
+        voiceGuidance.speak(text)
     }
 }

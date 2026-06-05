@@ -8,8 +8,11 @@ struct RoutePlannerView: View {
         ZStack(alignment: .top) {
             MapCanvasView(
                 region: viewModel.mapRegion,
+                route: viewModel.route,
                 start: viewModel.startPlace,
-                destination: viewModel.destinationPlace
+                destination: viewModel.destinationPlace,
+                isNavigating: viewModel.isNavigating,
+                followUser: viewModel.followUserOnMap
             )
             .ignoresSafeArea()
 
@@ -35,11 +38,23 @@ struct RoutePlannerView: View {
                 Spacer(minLength: 0)
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if viewModel.hasRoute || viewModel.isCalculatingRoute {
+                DirectionsBannerView(
+                    guidance: viewModel.guidance,
+                    isNavigating: viewModel.isNavigating,
+                    isCalculatingRoute: viewModel.isCalculatingRoute,
+                    hasRoute: viewModel.hasRoute,
+                    onStart: viewModel.startNavigation,
+                    onStop: viewModel.stopNavigation
+                )
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
+        }
         .onAppear { viewModel.onAppear() }
         .onReceive(viewModel.locationManager.$currentLocation) { _ in
-            if viewModel.startUsesCurrentLocation {
-                viewModel.refreshStartFromCurrentLocation()
-            }
+            viewModel.handleLocationUpdate()
         }
     }
 

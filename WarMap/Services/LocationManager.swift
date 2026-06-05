@@ -10,12 +10,15 @@ final class LocationManager: NSObject, ObservableObject {
 
     private let manager = CLLocationManager()
     private let geocoder = CLGeocoder()
+    private var isNavigationMode = false
 
     override init() {
         authorizationStatus = manager.authorizationStatus
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = kCLDistanceFilterNone
+        manager.pausesLocationUpdatesAutomatically = false
     }
 
     var isAuthorized: Bool {
@@ -38,15 +41,26 @@ final class LocationManager: NSObject, ObservableObject {
         }
     }
 
-    func refreshLocation() {
-        guard isAuthorized else {
-            requestAccessIfNeeded()
-            return
+    func startNavigationUpdates() {
+        isNavigationMode = true
+        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        manager.distanceFilter = 8
+        manager.startUpdatingLocation()
+        if CLLocationManager.headingAvailable() {
+            manager.startUpdatingHeading()
         }
-        manager.requestLocation()
+    }
+
+    func stopNavigationUpdates() {
+        isNavigationMode = false
+        manager.stopUpdatingHeading()
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = kCLDistanceFilterNone
+        manager.startUpdatingLocation()
     }
 
     private func reverseGeocode(_ location: CLLocation) {
+        guard !isNavigationMode else { return }
         geocoder.cancelGeocode()
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
             guard let self else { return }
@@ -87,6 +101,6 @@ extension LocationManager: CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Keep last known location; GPS can be unavailable in Simulator.
+        // GPS can be unavailable in Simulator.
     }
 }
