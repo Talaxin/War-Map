@@ -10,6 +10,12 @@
 		A10000010000000000000001 /* WarMapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000001 /* WarMapApp.swift */; };
 		A10000010000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000002 /* ContentView.swift */; };
 		A10000010000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000003 /* Assets.xcassets */; };
+		A10000010000000000000010 /* MapPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000010 /* MapPlace.swift */; };
+		A10000010000000000000011 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000011 /* LocationManager.swift */; };
+		A10000010000000000000012 /* AddressSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000012 /* AddressSearchService.swift */; };
+		A10000010000000000000013 /* RoutePlannerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000013 /* RoutePlannerViewModel.swift */; };
+		A10000010000000000000014 /* MapCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000014 /* MapCanvasView.swift */; };
+		A10000010000000000000015 /* RoutePlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000015 /* RoutePlannerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -17,6 +23,12 @@
 		A10000020000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A10000020000000000000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000020000000000000004 /* WarMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WarMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000020000000000000010 /* MapPlace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPlace.swift; sourceTree = "<group>"; };
+		A10000020000000000000011 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		A10000020000000000000012 /* AddressSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressSearchService.swift; sourceTree = "<group>"; };
+		A10000020000000000000013 /* RoutePlannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePlannerViewModel.swift; sourceTree = "<group>"; };
+		A10000020000000000000014 /* MapCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapCanvasView.swift; sourceTree = "<group>"; };
+		A10000020000000000000015 /* RoutePlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePlannerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,6 +55,10 @@
 			children = (
 				A10000020000000000000001 /* WarMapApp.swift */,
 				A10000020000000000000002 /* ContentView.swift */,
+				A10000040000000000000010 /* Models */,
+				A10000040000000000000011 /* Services */,
+				A10000040000000000000012 /* ViewModels */,
+				A10000040000000000000013 /* Views */,
 				A10000020000000000000003 /* Assets.xcassets */,
 			);
 			path = WarMap;
@@ -54,6 +70,40 @@
 				A10000020000000000000004 /* WarMap.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000040000000000000010 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A10000020000000000000010 /* MapPlace.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A10000040000000000000011 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A10000020000000000000011 /* LocationManager.swift */,
+				A10000020000000000000012 /* AddressSearchService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A10000040000000000000012 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				A10000020000000000000013 /* RoutePlannerViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		A10000040000000000000013 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A10000020000000000000014 /* MapCanvasView.swift */,
+				A10000020000000000000015 /* RoutePlannerView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -127,6 +177,12 @@
 			files = (
 				A10000010000000000000001 /* WarMapApp.swift in Sources */,
 				A10000010000000000000002 /* ContentView.swift in Sources */,
+				A10000010000000000000010 /* MapPlace.swift in Sources */,
+				A10000010000000000000011 /* LocationManager.swift in Sources */,
+				A10000010000000000000012 /* AddressSearchService.swift in Sources */,
+				A10000010000000000000013 /* RoutePlannerViewModel.swift in Sources */,
+				A10000010000000000000014 /* MapCanvasView.swift in Sources */,
+				A10000010000000000000015 /* RoutePlannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -182,11 +238,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "War Map uses your location to set your starting point and improve address search.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -195,7 +252,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -212,11 +269,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "War Map uses your location to set your starting point and improve address search.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -225,7 +283,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.0.1;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
