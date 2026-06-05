@@ -306,11 +306,13 @@ final class RoutePlannerViewModel: ObservableObject {
         defer { isCalculatingRoute = false }
 
         do {
-            let newRoute = try await directionsService.calculateRoute(
+            let routes = try await directionsService.calculateRoutes(
                 from: start,
                 to: destination,
                 preferences: settings.routePreferences
             )
+            let newRoute = selectRouteWithNewRoadPreference(candidates: routes)
+
             route = newRoute
             guidanceEngine.load(route: newRoute)
             guidance = guidanceEngine.state
@@ -326,6 +328,44 @@ final class RoutePlannerViewModel: ObservableObject {
         route = nil
         guidanceEngine.reset()
         guidance = guidanceEngine.state
+    }
+
+    private func selectRouteWithNewRoadPreference(candidates: [MKRoute]) -> MKRoute {
+        guard let fastest = candidates.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
+            return candidates.first!
+        }
+
+        // Target: x% of the chosen route distance should be on unvisited cells.
+        let target = Double(max(0, min(100, settings.newRoadPercent))) / 100.0
+        guard target > 0 else { return fastest }
+
+        struct Scored {
+            let route: MKRoute
+            let newRatio: Double
+        }
+
+        let scored: [Scored] = candidates.map { route in
+            let newMeters = locationManager.estimateNewDistanceMeters(along: route.polyline)
+            let total = max(route.distance, 1)
+            return Scored(route: route, newRatio: newMeters / total)
+        }
+
+        // First try to satisfy the target and stay as close as possible to the fastest route.
+        if let bestMeetingTarget = scored
+            .filter({ $0.newRatio >= target })
+            .min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) {
+            return bestMeetingTarget.route
+        }
+
+        // If no alternate meets the target, pick the route with the most "new" distance,
+        // breaking ties toward shorter travel time (still keeps things close to fastest).
+        return scored
+            .sorted {
+                if $0.newRatio != $1.newRatio { return $0.newRatio > $1.newRatio }
+                return $0.route.expectedTravelTime < $1.route.expectedTravelTime
+            }
+            .first?
+            .route ?? fastest
     }
 
     private func announceGuidanceIfNeeded() {

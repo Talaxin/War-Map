@@ -20,6 +20,7 @@ struct RoutePlannerView: View {
                 isNavigating: viewModel.isNavigating,
                 followUser: viewModel.followUserOnMap,
                 routeColor: viewModel.routeUIColor,
+                vehicleType: viewModel.settings.vehicleType,
                 recenterToken: viewModel.recenterToken,
                 onUserInteraction: viewModel.userDidInteractWithMap
             )

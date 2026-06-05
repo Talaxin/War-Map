@@ -4,6 +4,7 @@ import SwiftUI
 import UIKit
 
 enum VehicleType: String, CaseIterable, Identifiable {
+    case blueDot
     case car
     case suv
     case truck
@@ -12,6 +13,7 @@ enum VehicleType: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
+        case .blueDot: return "Blue dot"
         case .car: return "Car"
         case .suv: return "SUV"
         case .truck: return "Truck"
@@ -20,10 +22,15 @@ enum VehicleType: String, CaseIterable, Identifiable {
 
     var symbolName: String {
         switch self {
+        case .blueDot: return "location.fill"
         case .car: return "car.fill"
         case .suv: return "car.2.fill"
         case .truck: return "truck.box.fill"
         }
+    }
+
+    var usesSystemUserLocation: Bool {
+        self == .blueDot
     }
 }
 
@@ -133,7 +140,7 @@ final class AppSettings: ObservableObject {
     init() {
         let defaults = UserDefaults.standard
         routeColor = RouteColorOption(rawValue: defaults.string(forKey: Key.routeColor.rawValue) ?? "") ?? .blue
-        vehicleType = VehicleType(rawValue: defaults.string(forKey: Key.vehicleType.rawValue) ?? "") ?? .car
+        vehicleType = VehicleType(rawValue: defaults.string(forKey: Key.vehicleType.rawValue) ?? "") ?? .blueDot
         voiceGuidanceEnabled = defaults.object(forKey: Key.voiceEnabled.rawValue) as? Bool ?? false
         selectedVoiceID = defaults.string(forKey: Key.voiceID.rawValue) ?? VoiceOption.systemDefault.id
         newRoadPercent = defaults.object(forKey: Key.newRoadPercent.rawValue) as? Int ?? 50

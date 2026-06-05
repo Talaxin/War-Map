@@ -9,6 +9,7 @@ struct MapCanvasView: UIViewRepresentable {
     let isNavigating: Bool
     let followUser: Bool
     let routeColor: UIColor
+    let vehicleType: VehicleType
     let recenterToken: Int
     var onUserInteraction: () -> Void = {}
 
@@ -28,6 +29,11 @@ struct MapCanvasView: UIViewRepresentable {
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
         context.coordinator.parent = self
+
+        if context.coordinator.lastVehicleType != vehicleType {
+            context.coordinator.lastVehicleType = vehicleType
+            context.coordinator.refreshUserLocationAnnotation(on: mapView)
+        }
 
         mapView.removeOverlays(mapView.overlays)
         if let route {
@@ -80,10 +86,37 @@ struct MapCanvasView: UIViewRepresentable {
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: MapCanvasView
         var lastRecenterToken = -1
+        var lastVehicleType: VehicleType?
         var isProgrammaticRegionChange = false
 
         init(parent: MapCanvasView) {
             self.parent = parent
+            lastVehicleType = parent.vehicleType
+        }
+
+        func refreshUserLocationAnnotation(on mapView: MKMapView) {
+            mapView.showsUserLocation = false
+            mapView.showsUserLocation = true
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard annotation is MKUserLocation else { return nil }
+            guard !parent.vehicleType.usesSystemUserLocation else { return nil }
+
+            let identifier = "CustomUserLocation"
+            let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+                ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+
+            view.annotation = annotation
+            view.canShowCallout = false
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
+            let image = UIImage(
+                systemName: parent.vehicleType.symbolName,
+                withConfiguration: symbolConfig
+            )?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+            view.image = image
+            view.centerOffset = CGPoint(x: 0, y: -((image?.size.height ?? 24) / 2))
+            return view
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {

@@ -23,11 +23,23 @@ final class RouteDirectionsService {
         to destination: MapPlace,
         preferences: RoutePreferences
     ) async throws -> MKRoute {
+        let routes = try await calculateRoutes(from: start, to: destination, preferences: preferences)
+        guard let route = routes.first else {
+            throw RouteDirectionsError.noRoute
+        }
+        return route
+    }
+
+    func calculateRoutes(
+        from start: MapPlace,
+        to destination: MapPlace,
+        preferences: RoutePreferences
+    ) async throws -> [MKRoute] {
         let request = MKDirections.Request()
         request.source = mapItem(for: start)
         request.destination = mapItem(for: destination)
         request.transportType = .automobile
-        request.requestsAlternateRoutes = false
+        request.requestsAlternateRoutes = true
 
         if #available(iOS 16.0, *) {
             request.highwayPreference = preferences.allowHighways ? .any : .avoid
@@ -57,10 +69,10 @@ final class RouteDirectionsService {
             }
         }
 
-        guard let route = routes.first else {
+        guard !routes.isEmpty else {
             throw RouteDirectionsError.noRoute
         }
-        return route
+        return routes
     }
 
     private func mapItem(for place: MapPlace) -> MKMapItem {

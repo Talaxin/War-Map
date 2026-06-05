@@ -5,67 +5,56 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
-            Form {
-                Section("Route appearance") {
-                    Picker("Route color", selection: $settings.routeColor) {
-                        ForEach(RouteColorOption.allCases) { option in
-                            HStack {
-                                Circle()
-                                    .fill(option.color)
-                                    .frame(width: 14, height: 14)
-                                Text(option.label)
-                            }
-                            .tag(option)
-                        }
-                    }
-
-                    Picker("Vehicle icon", selection: $settings.vehicleType) {
-                        ForEach(VehicleType.allCases) { type in
-                            Label(type.label, systemImage: type.symbolName)
-                                .tag(type)
-                        }
-                    }
+        NavigationStack {
+            List {
+                NavigationLink {
+                    RouteAppearanceSettingsView(settings: settings)
+                } label: {
+                    SettingsRowLabel(
+                        title: "Route Appearance",
+                        subtitle: settings.routeColor.label,
+                        systemImage: "point.topleft.down.curvedto.point.bottomright.up"
+                    )
                 }
 
-                Section("Voice guidance") {
-                    Toggle("Speak directions", isOn: $settings.voiceGuidanceEnabled)
-                    if settings.voiceGuidanceEnabled {
-                        Picker("Voice", selection: $settings.selectedVoiceID) {
-                            ForEach(settings.voiceOptions) { voice in
-                                Text(voice.name).tag(voice.id)
-                            }
-                        }
-                    }
+                NavigationLink {
+                    VehicleIconSettingsView(settings: settings)
+                } label: {
+                    SettingsRowLabel(
+                        title: "Map Marker",
+                        subtitle: settings.vehicleType.label,
+                        systemImage: settings.vehicleType.symbolName
+                    )
                 }
 
-                Section("New Road") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Preference")
-                            Spacer()
-                            Text("\(settings.newRoadPercent)%")
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(
-                            value: Binding(
-                                get: { Double(settings.newRoadPercent) },
-                                set: { settings.newRoadPercent = Int(($0 / 10).rounded() * 10) }
-                            ),
-                            in: 0...100,
-                            step: 10
-                        )
-                        Text("Routing impact coming soon.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                NavigationLink {
+                    VoiceGuidanceSettingsView(settings: settings)
+                } label: {
+                    SettingsRowLabel(
+                        title: "Voice Guidance",
+                        subtitle: settings.voiceGuidanceEnabled ? "On" : "Off",
+                        systemImage: "speaker.wave.2.fill"
+                    )
                 }
 
-                Section("Route options") {
-                    Toggle("Highways", isOn: $settings.allowHighways)
-                    Toggle("Ferries", isOn: $settings.allowFerries)
-                    Toggle("Cross-border", isOn: $settings.allowCrossBorder)
-                    Toggle("Toll roads", isOn: $settings.allowTollRoads)
+                NavigationLink {
+                    NewRoadSettingsView(settings: settings)
+                } label: {
+                    SettingsRowLabel(
+                        title: "New Road",
+                        subtitle: "\(settings.newRoadPercent)%",
+                        systemImage: "road.lanes"
+                    )
+                }
+
+                NavigationLink {
+                    RouteOptionsSettingsView(settings: settings)
+                } label: {
+                    SettingsRowLabel(
+                        title: "Route Options",
+                        subtitle: routeOptionsSummary,
+                        systemImage: "arrow.triangle.turn.up.right.diamond.fill"
+                    )
                 }
             }
             .navigationTitle("Settings")
@@ -76,5 +65,160 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private var routeOptionsSummary: String {
+        let enabled = [
+            settings.allowHighways ? "Highways" : nil,
+            settings.allowFerries ? "Ferries" : nil,
+            settings.allowCrossBorder ? "Cross-border" : nil,
+            settings.allowTollRoads ? "Tolls" : nil,
+        ].compactMap { $0 }
+        return enabled.isEmpty ? "None" : enabled.joined(separator: ", ")
+    }
+}
+
+private struct SettingsRowLabel: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.body)
+                .foregroundStyle(.blue)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+private struct RouteAppearanceSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Route color", selection: $settings.routeColor) {
+                    ForEach(RouteColorOption.allCases) { option in
+                        HStack {
+                            Circle()
+                                .fill(option.color)
+                                .frame(width: 14, height: 14)
+                            Text(option.label)
+                        }
+                        .tag(option)
+                    }
+                }
+                .pickerStyle(.inline)
+            } footer: {
+                Text("Color of the driving route line on the map.")
+            }
+        }
+        .navigationTitle("Route Appearance")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct VehicleIconSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Map marker", selection: $settings.vehicleType) {
+                    ForEach(VehicleType.allCases) { type in
+                        Label(type.label, systemImage: type.symbolName)
+                            .tag(type)
+                    }
+                }
+                .pickerStyle(.inline)
+            } footer: {
+                Text("Blue dot uses the standard Apple Maps location marker. Other options replace it with a vehicle icon.")
+            }
+        }
+        .navigationTitle("Map Marker")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct VoiceGuidanceSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Speak directions", isOn: $settings.voiceGuidanceEnabled)
+            }
+            if settings.voiceGuidanceEnabled {
+                Section("Voice") {
+                    Picker("Voice", selection: $settings.selectedVoiceID) {
+                        ForEach(settings.voiceOptions) { voice in
+                            Text(voice.name).tag(voice.id)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                }
+            }
+        }
+        .navigationTitle("Voice Guidance")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct NewRoadSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Preference")
+                        Spacer()
+                        Text("\(settings.newRoadPercent)%")
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { Double(settings.newRoadPercent) },
+                            set: { settings.newRoadPercent = Int(($0 / 10).rounded() * 10) }
+                        ),
+                        in: 0...100,
+                        step: 10
+                    )
+                }
+            } footer: {
+                Text("War Map remembers roads you have actually driven. At 0% you get the fastest route. Higher values prefer alternates with more untraveled distance while staying as close to the fastest route as possible.")
+            }
+        }
+        .navigationTitle("New Road")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct RouteOptionsSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Highways", isOn: $settings.allowHighways)
+                Toggle("Ferries", isOn: $settings.allowFerries)
+                Toggle("Cross-border", isOn: $settings.allowCrossBorder)
+                Toggle("Toll roads", isOn: $settings.allowTollRoads)
+            } footer: {
+                Text("Choose which road types War Map may include when calculating routes.")
+            }
+        }
+        .navigationTitle("Route Options")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
