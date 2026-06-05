@@ -2,7 +2,13 @@ import MapKit
 import SwiftUI
 
 struct RoutePlannerView: View {
-    @StateObject private var viewModel = RoutePlannerViewModel()
+    @StateObject private var viewModel: RoutePlannerViewModel
+    @State private var showSettings = false
+    @FocusState private var focusedField: RouteField?
+
+    init(settings: AppSettings) {
+        _viewModel = StateObject(wrappedValue: RoutePlannerViewModel(settings: settings))
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -12,19 +18,40 @@ struct RoutePlannerView: View {
                 start: viewModel.startPlace,
                 destination: viewModel.destinationPlace,
                 isNavigating: viewModel.isNavigating,
-                followUser: viewModel.followUserOnMap
+                followUser: viewModel.followUserOnMap,
+                routeColor: viewModel.routeUIColor,
+                recenterToken: viewModel.recenterToken,
+                onUserInteraction: viewModel.userDidInteractWithMap
             )
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                searchCard
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
+                HStack {
+                    Spacer()
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title3)
+                            .foregroundStyle(.primary)
+                            .padding(10)
+                            .background(.regularMaterial, in: Circle())
+                    }
+                    .accessibilityLabel("Settings")
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
 
-                if viewModel.focusedField != nil, !viewModel.searchCompletions.isEmpty {
-                    suggestionsList
+                if viewModel.isSearchPanelExpanded {
+                    expandedSearchCard
                         .padding(.horizontal, 12)
-                        .padding(.top, 8)
+                        .padding(.top, 4)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                } else {
+                    collapsedSearchBar
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
                 if let error = viewModel.searchError {
@@ -37,7 +64,28 @@ struct RoutePlannerView: View {
 
                 Spacer(minLength: 0)
             }
+
+            if viewModel.isNavigating || viewModel.hasRoute {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: viewModel.recenterOnUser) {
+                            Image(systemName: "location.fill")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 48, height: 48)
+                                .background(Color.accentColor, in: Circle())
+                                .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
+                        }
+                        .accessibilityLabel("Re-center on your location")
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 8)
+                    }
+                }
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isSearchPanelExpanded)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if viewModel.hasRoute || viewModel.isCalculatingRoute {
                 DirectionsBannerView(
@@ -52,36 +100,91 @@ struct RoutePlannerView: View {
                 .padding(.bottom, 8)
             }
         }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(settings: viewModel.settings)
+        }
         .onAppear { viewModel.onAppear() }
         .onReceive(viewModel.locationManager.$currentLocation) { _ in
             viewModel.handleLocationUpdate()
         }
+        .onChange(of: focusedField) { newValue in
+            viewModel.focusedField = newValue
+            if newValue == nil {
+                viewModel.blurSearch()
+            } else if let newValue {
+                viewModel.focus(newValue)
+            }
+        }
+        .onChange(of: viewModel.focusedField) { newValue in
+            focusedField = newValue
+        }
     }
 
-    private var searchCard: some View {
+    private var collapsedSearchBar: some View {
+        Button(action: viewModel.expandSearchPanel) {
+            HStack(spacing: 10) {
+                Image(systemName: "mappin.and.ellipse")
+                    .foregroundStyle(.secondary)
+                Text(viewModel.collapsedSummary)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var expandedSearchCard: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
                 Circle()
                     .fill(Color.blue)
                     .frame(width: 10, height: 10)
-                startRow
-                Button(action: viewModel.swapEndpoints) {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.secondary)
+                    .padding(.top, 6)
+                VStack(spacing: 0) {
+                    startFieldBlock
+                    if viewModel.focusedField == .start, !viewModel.searchCompletions.isEmpty {
+                        suggestionsScroll
+                    }
                 }
-                .accessibilityLabel("Swap start and destination")
+                VStack(spacing: 8) {
+                    Button(action: viewModel.useCurrentLocationForStart) {
+                        Image(systemName: "location.fill")
+                            .font(.body)
+                            .foregroundStyle(viewModel.startUsesCurrentLocation ? .blue : .secondary)
+                    }
+                    Button(action: viewModel.swapEndpoints) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.top, 2)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.top, 10)
 
             Divider().padding(.leading, 32)
 
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
                 Circle()
                     .fill(Color.red)
                     .frame(width: 10, height: 10)
-                destinationRow
+                    .padding(.top, 6)
+                VStack(spacing: 0) {
+                    destinationFieldBlock
+                    if viewModel.focusedField == .destination, !viewModel.searchCompletions.isEmpty {
+                        suggestionsScroll
+                    }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -91,82 +194,69 @@ struct RoutePlannerView: View {
     }
 
     @ViewBuilder
-    private var startRow: some View {
-        HStack(spacing: 8) {
-            Group {
-                if viewModel.startUsesCurrentLocation && viewModel.focusedField != .start {
-                    Text(viewModel.startDisplayText)
-                        .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .onTapGesture { viewModel.focus(.start) }
-                } else {
-                    TextField("Choose starting point", text: $viewModel.startQuery)
-                        .textInputAutocapitalization(.words)
-                        .disableAutocorrection(true)
-                        .onChange(of: viewModel.startQuery) { _ in
-                            viewModel.handleStartQueryChange()
-                        }
-                        .onTapGesture { viewModel.focus(.start) }
-                }
+    private var startFieldBlock: some View {
+        Group {
+            if viewModel.startUsesCurrentLocation && focusedField != .start {
+                Text(viewModel.startDisplayText)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onTapGesture { focusedField = .start }
+            } else {
+                TextField("Choose starting point", text: $viewModel.startQuery)
+                    .textInputAutocapitalization(.words)
+                    .disableAutocorrection(true)
+                    .focused($focusedField, equals: .start)
+                    .onChange(of: viewModel.startQuery) { _ in
+                        viewModel.handleStartQueryChange()
+                    }
             }
-
-            Button(action: viewModel.useCurrentLocationForStart) {
-                Image(systemName: "location.fill")
-                    .font(.body)
-                    .foregroundStyle(viewModel.startUsesCurrentLocation ? .blue : .secondary)
-            }
-            .accessibilityLabel("Use current location")
         }
-        .onSubmit { viewModel.blurSearch() }
+        .frame(minHeight: 28)
     }
 
-    private var destinationRow: some View {
+    private var destinationFieldBlock: some View {
         TextField("Where to?", text: $viewModel.destinationQuery)
             .textInputAutocapitalization(.words)
             .disableAutocorrection(true)
+            .focused($focusedField, equals: .destination)
             .onChange(of: viewModel.destinationQuery) { _ in
                 viewModel.handleDestinationQueryChange()
             }
-            .onTapGesture { viewModel.focus(.destination) }
-            .onSubmit { viewModel.blurSearch() }
+            .frame(minHeight: 28)
     }
 
-    private var suggestionsList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(viewModel.searchCompletions.enumerated()), id: \.offset) { _, completion in
-                Button {
-                    Task { await viewModel.selectCompletion(completion) }
-                } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(completion.title)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                        if !completion.subtitle.isEmpty {
-                            Text(completion.subtitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+    private var suggestionsScroll: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(Array(viewModel.searchCompletions.enumerated()), id: \.offset) { _, completion in
+                    Button {
+                        Task { await viewModel.selectCompletion(completion) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(completion.title)
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            if !completion.subtitle.isEmpty {
+                                Text(completion.subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 8)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                }
-                if completion.title != viewModel.searchCompletions.last?.title {
-                    Divider().padding(.leading, 14)
+                    if completion.title != viewModel.searchCompletions.last?.title {
+                        Divider()
+                    }
                 }
             }
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.1), radius: 8, y: 3)
-        .overlay {
-            if viewModel.isResolvingSearch {
-                ProgressView()
-                    .padding()
-            }
-        }
+        .frame(maxHeight: 180)
+        .padding(.top, 4)
     }
 }
 
 #Preview {
-    RoutePlannerView()
+    RoutePlannerView(settings: AppSettings())
 }

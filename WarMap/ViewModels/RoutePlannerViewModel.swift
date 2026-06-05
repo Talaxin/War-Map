@@ -2,6 +2,7 @@ import Combine
 import CoreLocation
 import Foundation
 import MapKit
+import UIKit
 
 enum RouteField: Hashable {
     case start
@@ -24,14 +25,18 @@ final class RoutePlannerViewModel: ObservableObject {
     @Published private(set) var isNavigating = false
     @Published private(set) var followUserOnMap = false
     @Published private(set) var guidance = NavigationGuidanceState()
+    @Published var isSearchPanelExpanded = true
+    @Published private(set) var recenterToken = 0
 
     let locationManager = LocationManager()
+    let settings: AppSettings
+
     private let searchService = AddressSearchService()
     private let directionsService = RouteDirectionsService()
     private let guidanceEngine = NavigationGuidanceEngine()
-    private let voiceGuidance = VoiceGuidanceService()
-
+    private let voiceGuidance: VoiceGuidanceService
     private var routeCalculationTask: Task<Void, Never>?
+    private var settingsCancellable: AnyCancellable?
 
     var searchCompletions: [MKLocalSearchCompletion] {
         searchService.completions
@@ -39,11 +44,19 @@ final class RoutePlannerViewModel: ObservableObject {
 
     var hasRoute: Bool { route != nil }
 
+    var routeUIColor: UIColor { settings.routeColor.uiColor }
+
     var startDisplayText: String {
         if startUsesCurrentLocation {
             return locationManager.currentAddressLabel
         }
         return startQuery
+    }
+
+    var collapsedSummary: String {
+        let start = startDisplayText
+        let dest = destinationQuery.isEmpty ? "Add destination" : destinationQuery
+        return "\(start) → \(dest)"
     }
 
     var mapRegion: MKCoordinateRegion {
@@ -93,9 +106,17 @@ final class RoutePlannerViewModel: ObservableObject {
         return MKCoordinateRegion(rect)
     }
 
-    init() {
+    init(settings: AppSettings) {
+        self.settings = settings
+        self.voiceGuidance = VoiceGuidanceService(settings: settings)
         locationManager.requestAccessIfNeeded()
         refreshStartFromCurrentLocation()
+
+        settingsCancellable = settings.objectWillChange
+            .debounce(for: .milliseconds(400), scheduler: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.scheduleRouteCalculation()
+            }
     }
 
     func onAppear() {
@@ -104,6 +125,7 @@ final class RoutePlannerViewModel: ObservableObject {
     }
 
     func focus(_ field: RouteField) {
+        isSearchPanelExpanded = true
         focusedField = field
         if field == .start, startUsesCurrentLocation {
             startQuery = locationManager.currentAddressLabel
@@ -115,6 +137,16 @@ final class RoutePlannerViewModel: ObservableObject {
     func blurSearch() {
         focusedField = nil
         searchService.clear()
+    }
+
+    func expandSearchPanel() {
+        isSearchPanelExpanded = true
+    }
+
+    func collapseSearchPanel() {
+        isSearchPanelExpanded = false
+        blurSearch()
+        KeyboardDismiss.resign()
     }
 
     func updateSearchQuery() {
@@ -130,7 +162,8 @@ final class RoutePlannerViewModel: ObservableObject {
             query = destinationQuery
         }
         let coordinate = locationManager.currentLocation?.coordinate
-        searchService.updateQuery(query, near: coordinate)
+        let hint = locationManager.currentAddressLabel
+        searchService.updateQuery(query, near: coordinate, localityHint: hint)
     }
 
     func useCurrentLocationForStart() {
@@ -171,6 +204,7 @@ final class RoutePlannerViewModel: ObservableObject {
             }
             searchService.clear()
             focusedField = nil
+            KeyboardDismiss.resign()
             scheduleRouteCalculation()
         } catch {
             searchError = error.localizedDescription
@@ -224,9 +258,9 @@ final class RoutePlannerViewModel: ObservableObject {
         guard route != nil else { return }
         isNavigating = true
         followUserOnMap = true
-        focusedField = nil
-        searchService.clear()
+        collapseSearchPanel()
         locationManager.startNavigationUpdates()
+        recenterOnUser()
         if let location = locationManager.currentLocation {
             _ = guidanceEngine.update(userLocation: location)
             guidance = guidanceEngine.state
@@ -239,6 +273,17 @@ final class RoutePlannerViewModel: ObservableObject {
         followUserOnMap = false
         locationManager.stopNavigationUpdates()
         voiceGuidance.stop()
+    }
+
+    func recenterOnUser() {
+        followUserOnMap = true
+        recenterToken += 1
+    }
+
+    func userDidInteractWithMap() {
+        if isNavigating {
+            followUserOnMap = false
+        }
     }
 
     func scheduleRouteCalculation() {
@@ -261,7 +306,11 @@ final class RoutePlannerViewModel: ObservableObject {
         defer { isCalculatingRoute = false }
 
         do {
-            let newRoute = try await directionsService.calculateRoute(from: start, to: destination)
+            let newRoute = try await directionsService.calculateRoute(
+                from: start,
+                to: destination,
+                preferences: settings.routePreferences
+            )
             route = newRoute
             guidanceEngine.load(route: newRoute)
             guidance = guidanceEngine.state

@@ -8,6 +8,7 @@ final class AddressSearchService: NSObject, ObservableObject {
     @Published private(set) var completions: [MKLocalSearchCompletion] = []
 
     private let completer = MKLocalSearchCompleter()
+    private var localityHint: String?
 
     override init() {
         super.init()
@@ -15,7 +16,8 @@ final class AddressSearchService: NSObject, ObservableObject {
         completer.resultTypes = [.address, .pointOfInterest]
     }
 
-    func updateQuery(_ query: String, near coordinate: CLLocationCoordinate2D?) {
+    func updateQuery(_ query: String, near coordinate: CLLocationCoordinate2D?, localityHint: String?) {
+        self.localityHint = localityHint
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             completions = []
@@ -25,8 +27,8 @@ final class AddressSearchService: NSObject, ObservableObject {
         if let coordinate {
             completer.region = MKCoordinateRegion(
                 center: coordinate,
-                latitudinalMeters: 50_000,
-                longitudinalMeters: 50_000
+                latitudinalMeters: 20_000,
+                longitudinalMeters: 20_000
             )
         }
         completer.queryFragment = trimmed
@@ -35,6 +37,7 @@ final class AddressSearchService: NSObject, ObservableObject {
     func clear() {
         completions = []
         completer.cancel()
+        localityHint = nil
     }
 
     func resolve(_ completion: MKLocalSearchCompletion) async throws -> MapPlace {
@@ -63,6 +66,35 @@ final class AddressSearchService: NSObject, ObservableObject {
             coordinate: placemark.coordinate
         )
     }
+
+    private func filterLocal(_ results: [MKLocalSearchCompletion]) -> [MKLocalSearchCompletion] {
+        guard let hint = localityHint?.trimmingCharacters(in: .whitespacesAndNewlines), !hint.isEmpty else {
+            return results
+        }
+        let tokens = localityTokens(from: hint)
+        guard !tokens.isEmpty else { return results }
+
+        let local = results.filter { completion in
+            let haystack = "\(completion.title) \(completion.subtitle)".lowercased()
+            return tokens.contains { haystack.contains($0) }
+        }
+        if local.isEmpty {
+            return Array(results.prefix(6))
+        }
+        let nonLocal = results.filter { completion in
+            !local.contains(where: { $0.title == completion.title && $0.subtitle == completion.subtitle })
+        }
+        return local + Array(nonLocal.prefix(3))
+    }
+
+    private func localityTokens(from hint: String) -> [String] {
+        let parts = hint
+            .lowercased()
+            .components(separatedBy: CharacterSet(charactersIn: ",·"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.count > 2 }
+        return Array(Set(parts)).prefix(4).map { $0 }
+    }
 }
 
 enum AddressSearchError: LocalizedError {
@@ -80,7 +112,7 @@ extension AddressSearchService: MKLocalSearchCompleterDelegate {
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         let results = completer.results
         Task { @MainActor in
-            completions = results
+            completions = filterLocal(results)
         }
     }
 

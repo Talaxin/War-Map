@@ -21,6 +21,9 @@
 		A100000100000000000018 /* VoiceGuidanceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000018 /* VoiceGuidanceService.swift */; };
 		A100000100000000000019 /* DistanceFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000019 /* DistanceFormatting.swift */; };
 		A100000100000000000020 /* DirectionsBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000020 /* DirectionsBannerView.swift */; };
+		A100000100000000000021 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000021 /* AppSettings.swift */; };
+		A100000100000000000022 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000022 /* SettingsView.swift */; };
+		A100000100000000000023 /* KeyboardDismiss.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000023 /* KeyboardDismiss.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +42,9 @@
 		A100000200000000000018 /* VoiceGuidanceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceGuidanceService.swift; sourceTree = "<group>"; };
 		A100000200000000000019 /* DistanceFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormatting.swift; sourceTree = "<group>"; };
 		A100000200000000000020 /* DirectionsBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectionsBannerView.swift; sourceTree = "<group>"; };
+		A100000200000000000021 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		A100000200000000000022 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A100000200000000000023 /* KeyboardDismiss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardDismiss.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000020000000000000010 /* MapPlace.swift */,
+				A100000200000000000021 /* AppSettings.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -115,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				A100000200000000000019 /* DistanceFormatting.swift */,
+				A100000200000000000023 /* KeyboardDismiss.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -125,6 +133,7 @@
 				A10000020000000000000014 /* MapCanvasView.swift */,
 				A10000020000000000000015 /* RoutePlannerView.swift */,
 				A100000200000000000020 /* DirectionsBannerView.swift */,
+				A100000200000000000022 /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -207,6 +216,9 @@
 				A10000010000000000000014 /* MapCanvasView.swift in Sources */,
 				A10000010000000000000015 /* RoutePlannerView.swift in Sources */,
 				A100000100000000000020 /* DirectionsBannerView.swift in Sources */,
+				A100000100000000000023 /* KeyboardDismiss.swift in Sources */,
+				A100000100000000000022 /* SettingsView.swift in Sources */,
+				A100000100000000000021 /* AppSettings.swift in Sources */,
 				A100000100000000000019 /* DistanceFormatting.swift in Sources */,
 				A100000100000000000018 /* VoiceGuidanceService.swift in Sources */,
 				A100000100000000000017 /* NavigationGuidanceEngine.swift in Sources */,
@@ -233,7 +245,7 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -252,7 +264,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -266,7 +278,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -280,7 +292,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -297,7 +309,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -311,7 +323,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.2.0;
+				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

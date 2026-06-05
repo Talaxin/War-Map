@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var settings = AppSettings()
+
     var body: some View {
-        RoutePlannerView()
+        RoutePlannerView(settings: settings)
     }
 }
 
