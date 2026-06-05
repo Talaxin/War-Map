@@ -8,6 +8,9 @@ on:
     paths:
       - "WarMap/**"
       - "WarMap.xcodeproj/**"
+      - "warmap.png"
+      - "icons/**"
+      - "scripts/**"
       - ".github/workflows/build-ipa.yml"
 
 jobs:
@@ -16,8 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate blank icons
-        run: python3 scripts/generate_blank_icon.py
+      - name: Sync app icons
+        run: python3 scripts/sync_app_icon.py
 
       - name: Build archive
         run: |
@@ -38,8 +41,11 @@ jobs:
           cp -R "$APP_PATH" build/ipa-export/Payload/
           cd build/ipa-export && zip -qr ../WarMap.ipa Payload
 
-      - name: Refresh repo.json size
-        run: python3 release_esign.py --description "CI-built War Map IPA."
+      - name: Ensure bundle icons and version
+        run: python3 scripts/patch_ipa.py --short-version 0.3.1 --build-version 5
+
+      - name: Refresh repo.json metadata
+        run: python3 release_esign.py --description "v0.3.1 — Gremlin app icon in the IPA and on the Feather source listing."
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
