@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import plistlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -17,6 +18,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "warmap.png"
 ASSET_CATALOG = ROOT / "WarMap/Assets.xcassets"
+PBXPROJ = ROOT / "WarMap.xcodeproj/project.pbxproj"
 MIN_VALID_ASSETS_CAR_BYTES = 100_000
 
 # Filenames iOS expects in the app bundle for AppIcon.
@@ -25,6 +27,15 @@ BUNDLE_ICONS: list[tuple[str, int]] = [
     ("AppIcon60x60@3x.png", 180),
     ("AppIcon76x76@2x~ipad.png", 152),
 ]
+
+
+def read_project_versions() -> tuple[str, str]:
+    text = PBXPROJ.read_text(encoding="utf-8")
+    marketing = re.search(r"MARKETING_VERSION = ([^;\n]+);", text)
+    build = re.search(r"CURRENT_PROJECT_VERSION = ([^;\n]+);", text)
+    if not marketing or not build:
+        raise ValueError(f"Could not read version fields from {PBXPROJ}")
+    return marketing.group(1).strip(), build.group(1).strip()
 
 
 def load_source() -> Image.Image:
@@ -148,9 +159,15 @@ def patch_ipa(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Patch icons and version into WarMap.ipa")
     parser.add_argument("--ipa", default="build/WarMap.ipa")
-    parser.add_argument("--short-version", default="0.3.2")
-    parser.add_argument("--build-version", default="6")
+    parser.add_argument("--short-version", help="Override MARKETING_VERSION from project.pbxproj")
+    parser.add_argument("--build-version", help="Override CURRENT_PROJECT_VERSION from project.pbxproj")
     args = parser.parse_args()
+
+    short_version, build_version = read_project_versions()
+    if args.short_version:
+        short_version = args.short_version
+    if args.build_version:
+        build_version = args.build_version
 
     ipa_path = (ROOT / args.ipa).resolve()
     if not ipa_path.is_file():
@@ -158,10 +175,10 @@ def main() -> int:
 
     patch_ipa(
         ipa_path,
-        short_version=args.short_version,
-        build_version=args.build_version,
+        short_version=short_version,
+        build_version=build_version,
     )
-    print(f"Patched {ipa_path} -> {args.short_version} ({args.build_version})")
+    print(f"Patched {ipa_path} -> {short_version} ({build_version})")
     return 0
 
 
