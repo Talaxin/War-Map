@@ -1,5 +1,5 @@
 War Map Limited Use License
-Version 1.0 — Copyright (c) 2026 Talaxin
+Version 1.1 — Copyright (c) 2026 Talaxin
 
 All rights reserved except as expressly granted below.
 
@@ -7,25 +7,45 @@ All rights reserved except as expressly granted below.
 
 You may:
 
-- Download the software and source code from the official repository.
-- Install and run the application for personal, noncommercial use only.
-- View the source code for your own reference.
+- Download, install, and run the software for personal, noncommercial use.
+- Fork this repository on GitHub (or similar) for reference, contribution, or personal use,
+  provided you keep **Talaxin** credited as the original author and retain this license and
+  copyright notices in the fork.
+- Make **private, personal changes** on your own copy for your own device only (for example,
+  adjusting colors or UI preferences) without redistributing or publishing those changes.
+
+## Forking rules
+
+If you fork this project:
+
+- You must **not remove or replace** copyright, author, or attribution to Talaxin.
+- You must **not rebrand** the project: do not rename the app, change the displayed developer
+  name, bundle identifier, icons, or marketing to present it as your own product or hide that
+  it is based on War Map.
+- Your fork should clearly indicate it is derived from War Map by Talaxin.
 
 ## Prohibited uses
 
 You may not, without prior written permission from the copyright holder:
 
-- Modify the software or create derivative works (including patched, forked, or rebuilt IPAs).
-- Redistribute, sublicense, sell, or otherwise make the software or source available to others.
-- Use the software for any commercial purpose.
-- Remove or alter copyright notices or this license.
+- **Rebrand or relabel** the software (including renamed IPAs, repos, or sources marketed as
+  a different app or by a different author).
+- **Redistribute** modified builds, patched IPAs, or derivative sources to others (including
+  AltStore/Feather repos, mirrors, or app stores).
+- **Sell** or use the software for commercial purposes.
+- Remove or alter required copyright or license notices.
+
+## Personal-only changes
+
+Changes you make **only for yourself** (installed on your own devices, not shared) are allowed,
+as long as you do not rebrand the app or distribute those builds to others.
 
 ## No warranty
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE COPYRIGHT
-HOLDER IS NOT LIABLE FOR ANY CLAIM OR DAMAGES ARISING FROM USE OF THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE COPYRIGHT HOLDER IS NOT
+LIABLE FOR ANY CLAIM OR DAMAGES ARISING FROM USE OF THE SOFTWARE.
 
 ## Contact
 
-For permissions beyond this license (including modification or commercial use),
-contact the repository owner: https://github.com/Talaxin/War-Map
+For permissions beyond this license (including rebranding, redistribution, or commercial use):
+https://github.com/Talaxin/War-Map
