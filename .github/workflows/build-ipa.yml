@@ -42,10 +42,10 @@ jobs:
           cd build/ipa-export && zip -qr ../WarMap.ipa Payload
 
       - name: Ensure bundle icons and version
-        run: python3 scripts/patch_ipa.py --short-version 0.3.1 --build-version 5
+        run: python3 scripts/patch_ipa.py
 
       - name: Refresh repo.json metadata
-        run: python3 release_esign.py --description "v0.3.1 — Gremlin app icon in the IPA and on the Feather source listing."
+        run: python3 release_esign.py --description "Latest War Map build."
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4

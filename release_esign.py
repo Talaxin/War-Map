@@ -90,7 +90,7 @@ def main() -> int:
 
     now_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
     ipa_size = ipa_path.stat().st_size
-    ipa_short_version, ipa_build_version = read_ipa_versions(ipa_path)
+    ipa_short_version, _ipa_build_version = read_ipa_versions(ipa_path)
 
     before_app_version = str(app.get("version", "0.0.0"))
     after_app_version = before_app_version
@@ -119,8 +119,8 @@ def main() -> int:
     print(f"Updated {repo_json_path}")
     print(f"Version: {before_app_version} -> {after_app_version}")
     print(f"IPA size: {ipa_size}")
-    if ipa_short_version or ipa_build_version:
-        print(f"IPA bundle: short={ipa_short_version or 'n/a'} build={ipa_build_version or 'n/a'}")
+    if ipa_short_version:
+        print(f"IPA bundle version: {ipa_short_version}")
     return 0
 
 

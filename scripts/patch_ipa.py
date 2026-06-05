@@ -29,13 +29,12 @@ BUNDLE_ICONS: list[tuple[str, int]] = [
 ]
 
 
-def read_project_versions() -> tuple[str, str]:
+def read_project_version() -> str:
     text = PBXPROJ.read_text(encoding="utf-8")
     marketing = re.search(r"MARKETING_VERSION = ([^;\n]+);", text)
-    build = re.search(r"CURRENT_PROJECT_VERSION = ([^;\n]+);", text)
-    if not marketing or not build:
-        raise ValueError(f"Could not read version fields from {PBXPROJ}")
-    return marketing.group(1).strip(), build.group(1).strip()
+    if not marketing:
+        raise ValueError(f"Could not read MARKETING_VERSION from {PBXPROJ}")
+    return marketing.group(1).strip()
 
 
 def load_source() -> Image.Image:
@@ -115,8 +114,7 @@ def rebuild_assets_car(app_dir: Path) -> None:
 def patch_ipa(
     ipa_path: Path,
     *,
-    short_version: str,
-    build_version: str,
+    version: str,
 ) -> None:
     source = load_source()
     with tempfile.TemporaryDirectory(prefix="warmap-ipa-") as tmp:
@@ -140,8 +138,8 @@ def patch_ipa(
         info_path = app_dir / "Info.plist"
         with info_path.open("rb") as f:
             info = plistlib.load(f)
-        info["CFBundleShortVersionString"] = short_version
-        info["CFBundleVersion"] = build_version
+        info["CFBundleShortVersionString"] = version
+        info["CFBundleVersion"] = version
         with info_path.open("wb") as f:
             plistlib.dump(info, f)
 
@@ -159,26 +157,17 @@ def patch_ipa(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Patch icons and version into WarMap.ipa")
     parser.add_argument("--ipa", default="build/WarMap.ipa")
-    parser.add_argument("--short-version", help="Override MARKETING_VERSION from project.pbxproj")
-    parser.add_argument("--build-version", help="Override CURRENT_PROJECT_VERSION from project.pbxproj")
+    parser.add_argument("--version", help="Override MARKETING_VERSION from project.pbxproj")
     args = parser.parse_args()
 
-    short_version, build_version = read_project_versions()
-    if args.short_version:
-        short_version = args.short_version
-    if args.build_version:
-        build_version = args.build_version
+    version = args.version or read_project_version()
 
     ipa_path = (ROOT / args.ipa).resolve()
     if not ipa_path.is_file():
         raise FileNotFoundError(ipa_path)
 
-    patch_ipa(
-        ipa_path,
-        short_version=short_version,
-        build_version=build_version,
-    )
-    print(f"Patched {ipa_path} -> {short_version} ({build_version})")
+    patch_ipa(ipa_path, version=version)
+    print(f"Patched {ipa_path} -> {version}")
     return 0
 
 
