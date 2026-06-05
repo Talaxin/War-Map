@@ -4,13 +4,22 @@ import Foundation
 @MainActor
 final class VoiceGuidanceService {
     private let synthesizer = AVSpeechSynthesizer()
-    private var enabled = true
+    private weak var settings: AppSettings?
+
+    init(settings: AppSettings) {
+        self.settings = settings
+    }
 
     func speak(_ text: String) {
-        guard enabled, !text.isEmpty else { return }
+        guard let settings, settings.voiceGuidanceEnabled, !text.isEmpty else { return }
         synthesizer.stopSpeaking(at: .immediate)
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        if let voiceID = settings.voiceOptions.first(where: { $0.id == settings.selectedVoiceID })?.identifier,
+           let voice = AVSpeechSynthesisVoice(identifier: voiceID) {
+            utterance.voice = voice
+        } else {
+            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        }
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         synthesizer.speak(utterance)
     }

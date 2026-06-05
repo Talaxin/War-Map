@@ -8,6 +8,9 @@ struct MapCanvasView: UIViewRepresentable {
     let destination: MapPlace?
     let isNavigating: Bool
     let followUser: Bool
+    let routeColor: UIColor
+    let recenterToken: Int
+    var onUserInteraction: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -45,21 +48,39 @@ struct MapCanvasView: UIViewRepresentable {
             mapView.addAnnotation(annotation)
         }
 
+        context.coordinator.isProgrammaticRegionChange = true
         if followUser, isNavigating {
             mapView.setUserTrackingMode(.follow, animated: true)
         } else {
-            mapView.setUserTrackingMode(.none, animated: true)
-            if let route, !isNavigating {
+            if mapView.userTrackingMode != .none {
+                mapView.setUserTrackingMode(.none, animated: false)
+            }
+            if recenterToken != context.coordinator.lastRecenterToken {
+                context.coordinator.lastRecenterToken = recenterToken
+                if let coordinate = mapView.userLocation.location?.coordinate {
+                    let region = MKCoordinateRegion(
+                        center: coordinate,
+                        latitudinalMeters: 1_200,
+                        longitudinalMeters: 1_200
+                    )
+                    mapView.setRegion(region, animated: true)
+                }
+            } else if let route, !isNavigating {
                 let padding = UIEdgeInsets(top: 120, left: 48, bottom: 200, right: 48)
                 mapView.setVisibleMapRect(route.polyline.boundingMapRect, edgePadding: padding, animated: true)
-            } else {
+            } else if !isNavigating {
                 mapView.setRegion(region, animated: true)
             }
+        }
+        DispatchQueue.main.async {
+            context.coordinator.isProgrammaticRegionChange = false
         }
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: MapCanvasView
+        var lastRecenterToken = -1
+        var isProgrammaticRegionChange = false
 
         init(parent: MapCanvasView) {
             self.parent = parent
@@ -68,13 +89,18 @@ struct MapCanvasView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let polyline = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = UIColor.systemBlue
+                renderer.strokeColor = parent.routeColor
                 renderer.lineWidth = 6
                 renderer.lineCap = .round
                 renderer.lineJoin = .round
                 return renderer
             }
             return MKOverlayRenderer(overlay: overlay)
+        }
+
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            guard parent.isNavigating, parent.followUser, !isProgrammaticRegionChange else { return }
+            parent.onUserInteraction()
         }
     }
 }
