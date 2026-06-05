@@ -6,8 +6,9 @@ Wardriving map that calculates and routes based on distance untraveled previousl
 
 This project uses the [War Map Limited Use License](LICENSE). In short:
 
-- You may **download** and **use** the app for personal, noncommercial use.
-- You may **not modify** the source or app, create derivative works, redistribute, sell, or use it commercially.
+- You may **download**, **use**, and **fork** the repo if **Talaxin** stays credited as author.
+- You may make **personal-only** tweaks (e.g. colors) on your own install — not for sharing.
+- You may **not rebrand** (rename app, change author, or pass it off as your own) or **redistribute** modified builds.
 
 See [LICENSE](LICENSE) for the full legal text.
 
