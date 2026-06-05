@@ -2,6 +2,15 @@
 
 Wardriving map that calculates and routes based on distance untraveled previously.
 
+## License
+
+This project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). In short:
+
+- You may **download**, **use**, and **modify** the project for **noncommercial** purposes.
+- You may **not sell** the app, source, or derivatives, or use them for **commercial** purposes without permission from the copyright holder.
+
+See [LICENSE](LICENSE) for the full legal text.
+
 This repository includes a **placeholder iOS app** (v0.0.1) and a [Feather](https://github.com/khcrysalis/Feather) / AltStore-compatible `repo.json` source, modeled after [Noir’s repo layout](https://github.com/Talaxin/Noir/blob/main/repo.json).
 
 ## Feather sideload source
