@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Embed War Map icons and bundle version into an unsigned IPA."""
+"""Embed War Map icons, Assets.car, and bundle version into an IPA."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import plistlib
 import shutil
+import subprocess
 import tempfile
 import zipfile
 from pathlib import Path
@@ -14,6 +16,8 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "warmap.png"
+ASSET_CATALOG = ROOT / "WarMap/Assets.xcassets"
+MIN_VALID_ASSETS_CAR_BYTES = 100_000
 
 # Filenames iOS expects in the app bundle for AppIcon.
 BUNDLE_ICONS: list[tuple[str, int]] = [
@@ -28,6 +32,73 @@ def load_source() -> Image.Image:
     if image.size != (1024, 1024):
         image = image.resize((1024, 1024), Image.Resampling.LANCZOS)
     return image
+
+
+def assets_car_is_broken(car_path: Path) -> bool:
+    if not car_path.is_file():
+        return True
+    if car_path.stat().st_size < MIN_VALID_ASSETS_CAR_BYTES:
+        return True
+    try:
+        result = subprocess.run(
+            ["xcrun", "assetutil", "--info", str(car_path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        entries = json.loads(result.stdout)
+    except (subprocess.CalledProcessError, json.JSONDecodeError, FileNotFoundError):
+        return True
+
+    for entry in entries:
+        if entry.get("Name") != "AppIcon":
+            continue
+        if entry.get("AssetType") != "Icon Image":
+            continue
+        if entry.get("ColorModel") == "Monochrome":
+            return True
+        if entry.get("PixelWidth") == 1024 and (entry.get("SizeOnDisk") or 0) < 10_000:
+            return True
+    return False
+
+
+def rebuild_assets_car(app_dir: Path) -> None:
+    if not ASSET_CATALOG.is_dir():
+        raise FileNotFoundError(f"Missing asset catalog: {ASSET_CATALOG}")
+
+    with tempfile.TemporaryDirectory(prefix="warmap-actool-") as tmp:
+        compile_dir = Path(tmp) / "compiled"
+        compile_dir.mkdir()
+        partial_plist = Path(tmp) / "partial.plist"
+        subprocess.run(
+            [
+                "xcrun",
+                "actool",
+                str(ASSET_CATALOG),
+                "--compile",
+                str(compile_dir),
+                "--platform",
+                "iphoneos",
+                "--minimum-deployment-target",
+                "16.0",
+                "--app-icon",
+                "AppIcon",
+                "--output-partial-info-plist",
+                str(partial_plist),
+            ],
+            check=True,
+        )
+
+        compiled_car = compile_dir / "Assets.car"
+        if not compiled_car.is_file():
+            raise FileNotFoundError("actool did not produce Assets.car")
+
+        shutil.copy2(compiled_car, app_dir / "Assets.car")
+
+        for filename, _edge in BUNDLE_ICONS:
+            loose_icon = compile_dir / filename
+            if loose_icon.is_file():
+                shutil.copy2(loose_icon, app_dir / filename)
 
 
 def patch_ipa(
@@ -46,6 +117,10 @@ def patch_ipa(
         if not app_dirs:
             raise FileNotFoundError("No .app bundle found in IPA")
         app_dir = app_dirs[0]
+
+        car_path = app_dir / "Assets.car"
+        if assets_car_is_broken(car_path):
+            rebuild_assets_car(app_dir)
 
         for filename, edge in BUNDLE_ICONS:
             icon = source.resize((edge, edge), Image.Resampling.LANCZOS)
@@ -73,8 +148,8 @@ def patch_ipa(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Patch icons and version into WarMap.ipa")
     parser.add_argument("--ipa", default="build/WarMap.ipa")
-    parser.add_argument("--short-version", default="0.3.1")
-    parser.add_argument("--build-version", default="5")
+    parser.add_argument("--short-version", default="0.3.2")
+    parser.add_argument("--build-version", default="6")
     args = parser.parse_args()
 
     ipa_path = (ROOT / args.ipa).resolve()
