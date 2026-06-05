@@ -1,61 +1,58 @@
 # War Map
 
-Wardriving map that calculates and routes based on distance untraveled previously.
+Wardriving navigation for iOS — plan routes, remember roads you've driven, and prefer untraveled distance with the New Roads slider.
 
 ## License
 
-**[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/)** — the usual choice when you want **MIT-style freedom** (use, modify, fork, rebrand) but **no selling**.
+**[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/)**
 
 Full legal text: [LICENSE](LICENSE)
 
-| | MIT | This project (PolyForm NC) |
-| --- | --- | --- |
-| Use & modify | Yes | Yes |
-| Fork & rebrand (with credit) | Yes | Yes (noncommercial only) |
-| Share modified builds | Yes | Yes (noncommercial only) |
-| **Sell** or commercial use | **Yes** | **No** |
+**Attribution:** Keep the `Required Notice` in [LICENSE](LICENSE) and credit **Talaxin** / [War-Map](https://github.com/Talaxin/War-Map) as the original source in forks.
 
-**Attribution:** Keep the `Required Notice` in [LICENSE](LICENSE) and credit **Talaxin** / [War-Map](https://github.com/Talaxin/War-Map) as the original source in forks (e.g. README, About screen).
+## Install (Feather / AltStore)
 
-> Not legal advice. [PolyForm](https://polyformproject.org/) licenses are written for software; [MIT](https://opensource.org/license/mit) allows commercial sale, which is why this repo does not use MIT alone.
-
-## Feather sideload source
-
-Add this URL in Feather (Sources):
+Add this source URL:
 
 ```text
 https://raw.githubusercontent.com/Talaxin/War-Map/main/repo.json
 ```
 
-The listing shows **War Map** `0.0.1` with a blank gray icon (`warmap.png`).
+Then install **War Map** from the source listing.
 
-## Build the IPA
-
-### Quick placeholder (Linux / CI metadata)
-
-Creates `build/WarMap.ipa` with correct bundle metadata for the source feed. **Not installable** until replaced with a compiled binary.
-
-```bash
-python3 scripts/generate_blank_icon.py
-python3 scripts/build_placeholder_ipa.py
-python3 release_esign.py --description "Initial placeholder release."
-```
-
-### Installable build (macOS + Xcode)
+## Build the IPA (macOS + Xcode)
 
 1. Open `WarMap.xcodeproj` in Xcode.
-2. Set your **Signing & Capabilities** team.
-3. Product → Archive, then export a development/ad-hoc IPA, **or** run:
+2. Set **Signing & Capabilities** if installing on a device.
+3. Archive and export, **or** from the repo root:
 
 ```bash
-python3 scripts/generate_blank_icon.py
+python3 -m venv .venv && .venv/bin/pip install Pillow
+.venv/bin/python3 scripts/sync_app_icon.py
 xcodebuild -project WarMap.xcodeproj -scheme WarMap -configuration Release \
-  -destination 'generic/platform=iOS' -archivePath build/WarMap.xcarchive archive
-# Export with your provisioning profile, then:
-python3 release_esign.py --description "Signed War Map build."
+  -destination 'generic/platform=iOS' -archivePath build/WarMap.xcarchive archive \
+  CODE_SIGNING_ALLOWED=NO
+mkdir -p build/ipa-export/Payload
+cp -R build/WarMap.xcarchive/Products/Applications/WarMap.app build/ipa-export/Payload/
+cd build/ipa-export && zip -qr ../WarMap.ipa Payload
+cd ../..
+.venv/bin/python3 scripts/patch_ipa.py
 ```
 
-GitHub Actions (`.github/workflows/build-ipa.yml`) builds an unsigned IPA on `macos-14` when `WarMap/` changes on `main`.
+GitHub Actions (`.github/workflows/build-ipa.yml`) builds an unsigned IPA on pushes to `main` that touch app sources.
+
+## Release
+
+Bump the marketing version, rebuild the IPA, then refresh Feather metadata:
+
+```bash
+python3 scripts/bump_version.py
+# rebuild IPA (see above)
+python3 scripts/patch_ipa.py
+python3 release_esign.py --description "Your release notes."
+```
+
+Commit `build/WarMap.ipa`, `repo.json`, and `WarMap.xcodeproj/project.pbxproj`, then push to `main`.
 
 ## App metadata
 
@@ -63,13 +60,4 @@ GitHub Actions (`.github/workflows/build-ipa.yml`) builds an unsigned IPA on `ma
 | --- | --- |
 | Display name | War Map |
 | Bundle ID | `com.talaxin.warmap` |
-| Version | `0.0.1` |
-| Min iOS | 15.0 |
-
-## Release helper
-
-`release_esign.py` syncs `repo.json` version fields and IPA size from `build/WarMap.ipa` (same pattern as [Noir’s release script](https://github.com/Talaxin/Noir/blob/main/release_esign.py)).
-
-```bash
-python3 release_esign.py --bump --description "Your release notes."
-```
+| Min iOS | 16.0 |

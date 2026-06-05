@@ -3,8 +3,8 @@
 Refresh Feather / AltStore repo.json metadata from build/WarMap.ipa.
 
 Usage:
-  python3 release_esign.py --description "Placeholder notes."
-  python3 release_esign.py --bump --description "New build."
+  python3 release_esign.py --description "Release notes."
+  python3 release_esign.py --bump --description "Release notes."
 """
 
 from __future__ import annotations

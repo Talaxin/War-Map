@@ -59,7 +59,7 @@
         {
           "version": "0.3.0",
           "date": "2026-06-05T03:38:32+00:00",
-          "localizedDescription": "CI-built War Map IPA.",
+          "localizedDescription": "v0.3.0 — Navigation UI polish and Feather source updates.",
           "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
           "size": 130125,
           "minOSVersion": "16.0"
