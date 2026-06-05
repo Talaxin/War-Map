@@ -11,7 +11,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "warmap.png"
 APPICON_DIR = ROOT / "WarMap/Assets.xcassets/AppIcon.appiconset"
-FEATHER_ICON = ROOT / "icons/app-icon.png"
+FEATHER_ICON = ROOT / "icons/feather-icon.png"
 FEATHER_ICON_SIZE = 512
 FEATHER_ICON_BG = (12, 10, 18)
 
