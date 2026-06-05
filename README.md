@@ -4,13 +4,17 @@ Wardriving map that calculates and routes based on distance untraveled previousl
 
 ## License
 
-This project uses the [War Map Limited Use License](LICENSE). In short:
+**[Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 (CC BY-NC-ND 4.0)](https://creativecommons.org/licenses/by-nc-nd/4.0/)** — a standard, lawyer-drafted license. Full legal text: [LICENSE](LICENSE).
 
-- You may **download**, **use**, and **fork** the repo if **Talaxin** stays credited as author.
-- You may make **personal-only** tweaks (e.g. colors) on your own install — not for sharing.
-- You may **not rebrand** (rename app, change author, or pass it off as your own) or **redistribute** modified builds.
+| Your preference | How CC BY-NC-ND covers it |
+| --- | --- |
+| Download & personal use | Allowed (noncommercial, with attribution) |
+| Fork with **Talaxin** as author | Allowed if attribution is kept ([BY](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en)) |
+| Personal tweaks (e.g. colors) for yourself only | Allowed to *make* adaptations; **not** to *share* them ([ND](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en)) |
+| No rebranding / no shared modified builds | Sharing **Adapted Material** is not permitted ([ND](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en)) |
+| No selling / commercial use | Not allowed ([NC](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.en)) |
 
-See [LICENSE](LICENSE) for the full legal text.
+> **Note:** Creative Commons [recommends against using CC licenses for software](https://creativecommons.org/faq/#can-i-apply-a-creative-commons-license-to-software). This is still the closest *standard* match to your rules. For a software-specific alternative, see [PolyForm Noncommercial](https://polyformproject.org/licenses/noncommercial/1.0.0/) (allows sharing modified noncommercial builds — looser than ND).
 
 This repository includes a **placeholder iOS app** (v0.0.1) and a [Feather](https://github.com/khcrysalis/Feather) / AltStore-compatible `repo.json` source, modeled after [Noir’s repo layout](https://github.com/Talaxin/Noir/blob/main/repo.json).
 
