@@ -1,11 +1,11 @@
 {
   "name": "War Map",
   "identifier": "warmap",
-  "subtitle": "Wardriving map \u2014 Feather sideload source",
-  "description": "AltStore/Feather-compatible source for the War Map iOS placeholder app.",
+  "subtitle": "Wardriving navigation for Feather",
+  "description": "War Map — plan routes, follow turn-by-turn directions, and explore roads with a Feather/AltStore-compatible source.",
   "website": "https://github.com/Talaxin/War-Map",
   "iconURL": "https://raw.githubusercontent.com/Talaxin/War-Map/main/warmap.png",
-  "tintColor": "#808080",
+  "tintColor": "#007AFF",
   "featuredApps": [
     "com.talaxin.warmap"
   ],
@@ -14,23 +14,31 @@
       "name": "War Map",
       "bundleIdentifier": "com.talaxin.warmap",
       "developerName": "Talaxin",
-      "subtitle": "Wardriving map (placeholder)",
-      "localizedDescription": "Placeholder War Map build for Feather sideload testing. Replace build/WarMap.ipa with an Xcode or CI-signed build before installing on device.",
+      "subtitle": "Wardriving navigation & live directions",
+      "localizedDescription": "War Map helps you plan drives and follow routes in real time.\n\n• Start from your location or any address\n• Destination search with local suggestions\n• Driving route line on the map\n• Turn-by-turn banner with distance and ETA\n• Optional voice guidance (off by default)\n• Re-center button and collapsible search while navigating\n• Settings for route color, vehicle icon, and route options\n\nRequires location permission. Built for personal wardriving and road exploration.",
       "version": "0.3.0",
-      "versionDate": "2026-06-05T03:30:03+00:00",
-      "versionDescription": "CI-built War Map IPA.",
+      "versionDate": "2026-06-05T03:35:00+00:00",
+      "versionDescription": "Navigation UI: route line, live directions, re-center, collapsible search, settings (voice off by default), semi-local autocomplete, and route preference toggles.",
       "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
       "iconURL": "https://raw.githubusercontent.com/Talaxin/War-Map/main/warmap.png",
-      "tintColor": "#808080",
+      "tintColor": "#007AFF",
       "category": "navigation",
       "versions": [
         {
           "version": "0.3.0",
-          "date": "2026-06-05T03:30:03+00:00",
-          "localizedDescription": "CI-built War Map IPA.",
+          "date": "2026-06-05T03:35:00+00:00",
+          "localizedDescription": "v0.3.0 — Live navigation: driving route overlay, turn-by-turn updates, Go/End flow, re-center, collapsible address bar, inline scrollable suggestions, and Settings (route color, vehicle icon, voice, New Road slider, highway/ferry/toll/cross-border toggles). Requires iOS 16+.",
           "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
           "size": 130125,
-          "minOSVersion": "15.0"
+          "minOSVersion": "16.0"
+        },
+        {
+          "version": "0.2.0",
+          "date": "2026-06-05T03:11:56+00:00",
+          "localizedDescription": "v0.2.0 — Driving route overlay with turn-by-turn guidance and voice prompts.",
+          "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
+          "size": 130125,
+          "minOSVersion": "16.0"
         }
       ]
     }
