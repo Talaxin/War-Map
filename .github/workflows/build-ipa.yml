@@ -19,6 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Python deps
+        run: pip3 install Pillow
+
       - name: Sync app icons
         run: python3 scripts/sync_app_icon.py
 
@@ -45,7 +48,7 @@ jobs:
         run: python3 scripts/patch_ipa.py
 
       - name: Refresh repo.json metadata
-        run: python3 release_esign.py --description "Latest War Map build."
+        run: python3 release_esign.py --description "v0.3.5 — Persistent road memory and New Roads routing."
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
