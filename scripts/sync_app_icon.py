@@ -12,6 +12,16 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "warmap.png"
 APPICON_DIR = ROOT / "WarMap/Assets.xcassets/AppIcon.appiconset"
 FEATHER_ICON = ROOT / "icons/app-icon.png"
+FEATHER_ICON_SIZE = 512
+FEATHER_ICON_BG = (12, 10, 18)
+
+
+def feather_listing_icon(source: Image.Image) -> Image.Image:
+    """Opaque square icon for Feather/AltStore (transparent PNGs often show blank)."""
+    resized = source.resize((FEATHER_ICON_SIZE, FEATHER_ICON_SIZE), Image.Resampling.LANCZOS)
+    background = Image.new("RGB", (FEATHER_ICON_SIZE, FEATHER_ICON_SIZE), FEATHER_ICON_BG)
+    background.paste(resized, mask=resized.split()[3])
+    return background
 
 # (idiom, size label, scale, pixel edge length, filename)
 ICON_SPECS: list[tuple[str, str, str, int, str]] = [
@@ -74,7 +84,7 @@ def main() -> int:
         write_png(APPICON_DIR / filename, resized)
 
     write_png(SOURCE, source)
-    write_png(FEATHER_ICON, source.resize((256, 256), Image.Resampling.LANCZOS))
+    write_png(FEATHER_ICON, feather_listing_icon(source))
 
     contents_path = APPICON_DIR / "Contents.json"
     contents_path.write_text(json.dumps(build_contents_json(), indent=2) + "\n", encoding="utf-8")
