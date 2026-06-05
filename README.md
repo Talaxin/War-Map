@@ -4,10 +4,10 @@ Wardriving map that calculates and routes based on distance untraveled previousl
 
 ## License
 
-This project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). In short:
+This project uses the [War Map Limited Use License](LICENSE). In short:
 
-- You may **download**, **use**, and **modify** the project for **noncommercial** purposes.
-- You may **not sell** the app, source, or derivatives, or use them for **commercial** purposes without permission from the copyright holder.
+- You may **download** and **use** the app for personal, noncommercial use.
+- You may **not modify** the source or app, create derivative works, redistribute, sell, or use it commercially.
 
 See [LICENSE](LICENSE) for the full legal text.
 
