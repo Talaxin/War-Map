@@ -16,6 +16,11 @@
 		A10000010000000000000013 /* RoutePlannerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000013 /* RoutePlannerViewModel.swift */; };
 		A10000010000000000000014 /* MapCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000014 /* MapCanvasView.swift */; };
 		A10000010000000000000015 /* RoutePlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000020000000000000015 /* RoutePlannerView.swift */; };
+		A100000100000000000016 /* RouteDirectionsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000016 /* RouteDirectionsService.swift */; };
+		A100000100000000000017 /* NavigationGuidanceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000017 /* NavigationGuidanceEngine.swift */; };
+		A100000100000000000018 /* VoiceGuidanceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000018 /* VoiceGuidanceService.swift */; };
+		A100000100000000000019 /* DistanceFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000019 /* DistanceFormatting.swift */; };
+		A100000100000000000020 /* DirectionsBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000020 /* DirectionsBannerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +34,11 @@
 		A10000020000000000000013 /* RoutePlannerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePlannerViewModel.swift; sourceTree = "<group>"; };
 		A10000020000000000000014 /* MapCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapCanvasView.swift; sourceTree = "<group>"; };
 		A10000020000000000000015 /* RoutePlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePlannerView.swift; sourceTree = "<group>"; };
+		A100000200000000000016 /* RouteDirectionsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDirectionsService.swift; sourceTree = "<group>"; };
+		A100000200000000000017 /* NavigationGuidanceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGuidanceEngine.swift; sourceTree = "<group>"; };
+		A100000200000000000018 /* VoiceGuidanceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceGuidanceService.swift; sourceTree = "<group>"; };
+		A100000200000000000019 /* DistanceFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceFormatting.swift; sourceTree = "<group>"; };
+		A100000200000000000020 /* DirectionsBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectionsBannerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +68,7 @@
 				A10000040000000000000010 /* Models */,
 				A10000040000000000000011 /* Services */,
 				A10000040000000000000012 /* ViewModels */,
+				A10000040000000000000014 /* Utilities */,
 				A10000040000000000000013 /* Views */,
 				A10000020000000000000003 /* Assets.xcassets */,
 			);
@@ -85,6 +96,9 @@
 			children = (
 				A10000020000000000000011 /* LocationManager.swift */,
 				A10000020000000000000012 /* AddressSearchService.swift */,
+				A100000200000000000018 /* VoiceGuidanceService.swift */,
+				A100000200000000000017 /* NavigationGuidanceEngine.swift */,
+				A100000200000000000016 /* RouteDirectionsService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -97,11 +111,20 @@
 			path = ViewModels;
 			sourceTree = "<group>";
 		};
+		A10000040000000000000014 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				A100000200000000000019 /* DistanceFormatting.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
 		A10000040000000000000013 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				A10000020000000000000014 /* MapCanvasView.swift */,
 				A10000020000000000000015 /* RoutePlannerView.swift */,
+				A10000020000000000000020 /* DirectionsBannerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -183,6 +206,11 @@
 				A10000010000000000000013 /* RoutePlannerViewModel.swift in Sources */,
 				A10000010000000000000014 /* MapCanvasView.swift in Sources */,
 				A10000010000000000000015 /* RoutePlannerView.swift in Sources */,
+				A100000100000000000020 /* DirectionsBannerView.swift in Sources */,
+				A100000100000000000019 /* DistanceFormatting.swift in Sources */,
+				A100000100000000000018 /* VoiceGuidanceService.swift in Sources */,
+				A100000100000000000017 /* NavigationGuidanceEngine.swift in Sources */,
+				A100000100000000000016 /* RouteDirectionsService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -238,7 +266,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -252,7 +280,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -269,7 +297,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -283,7 +311,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
