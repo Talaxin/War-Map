@@ -16,14 +16,22 @@
       "developerName": "Talaxin",
       "subtitle": "Wardriving navigation & live directions",
       "localizedDescription": "War Map helps you plan drives and follow routes in real time.\n\n\u2022 Start from your location or any address\n\u2022 Destination search with local suggestions\n\u2022 Driving route line on the map\n\u2022 Turn-by-turn banner with distance and ETA\n\u2022 Optional voice guidance (off by default)\n\u2022 Re-center button and collapsible search while navigating\n\u2022 Settings for route color, vehicle icon, and route options\n\nRequires location permission. Built for personal wardriving and road exploration.",
-      "version": "0.3.9",
-      "versionDate": "2026-06-06T05:35:15+00:00",
-      "versionDescription": "War Map v0.3.9.",
+      "version": "0.3.10",
+      "versionDate": "2026-06-06T05:45:25+00:00",
+      "versionDescription": "War Map v0.3.10.",
       "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
       "iconURL": "https://raw.githubusercontent.com/Talaxin/War-Map/main/icons/source-icon.png",
       "tintColor": "#007AFF",
       "category": "navigation",
       "versions": [
+        {
+          "version": "0.3.10",
+          "date": "2026-06-06T05:45:25+00:00",
+          "localizedDescription": "War Map v0.3.10.",
+          "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
+          "size": 938930,
+          "minOSVersion": "16.0"
+        },
         {
           "version": "0.3.9",
           "date": "2026-06-06T05:35:15+00:00",
