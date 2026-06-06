@@ -45,23 +45,39 @@ struct MapCanvasView: UIViewRepresentable {
             context.coordinator.lastTrackedPathRevision = trackedPathRevision
         }
 
+        let routeFingerprint = Self.routeFingerprint(for: route)
+        let routeChanged = routeFingerprint != context.coordinator.lastRouteFingerprint
+
         if revisionChanged
+            || routeChanged
             || context.coordinator.needsOverlayRefresh(parent: self)
             || context.coordinator.lastRouteColor != routeColor
             || context.coordinator.lastTrackedColor != trackedColor {
-            mapView.removeOverlays(mapView.overlays)
-            for trackedPolyline in trackedPolylines {
-                mapView.addOverlay(trackedPolyline, level: .aboveRoads)
+            if revisionChanged
+                || context.coordinator.needsOverlayRefresh(parent: self)
+                || context.coordinator.lastTrackedColor != trackedColor {
+                mapView.removeOverlays(mapView.overlays.filter { ($0 as? MKPolyline)?.title != "route" })
+                for trackedPolyline in trackedPolylines {
+                    mapView.addOverlay(trackedPolyline, level: .aboveRoads)
+                }
+                context.coordinator.lastHadTracked = !trackedPolylines.isEmpty
+                context.coordinator.lastTrackedColor = trackedColor
             }
-            if let route {
-                let polyline = route.polyline
-                polyline.title = "route"
-                mapView.addOverlay(polyline, level: .aboveRoads)
+
+            if routeChanged
+                || revisionChanged
+                || context.coordinator.lastRouteColor != routeColor
+                || context.coordinator.needsOverlayRefresh(parent: self) {
+                mapView.removeOverlays(mapView.overlays.filter { ($0 as? MKPolyline)?.title == "route" })
+                if let route {
+                    let polyline = route.polyline
+                    polyline.title = "route"
+                    mapView.addOverlay(polyline, level: .aboveRoads)
+                }
+                context.coordinator.lastHadRoute = route != nil
+                context.coordinator.lastRouteColor = routeColor
+                context.coordinator.lastRouteFingerprint = routeFingerprint
             }
-            context.coordinator.lastHadTracked = !trackedPolylines.isEmpty
-            context.coordinator.lastHadRoute = route != nil
-            context.coordinator.lastRouteColor = routeColor
-            context.coordinator.lastTrackedColor = trackedColor
         }
 
         mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
@@ -97,17 +113,21 @@ struct MapCanvasView: UIViewRepresentable {
                 context.coordinator.setProgrammaticChange(false)
             }
 
-            if context.coordinator.shouldApplyIdleViewport(parent: self, followChanged: followChanged) {
+            if context.coordinator.shouldApplyIdleViewport(
+                parent: self,
+                followChanged: followChanged,
+                routeChanged: routeChanged
+            ) {
                 context.coordinator.setProgrammaticChange(true)
                 if let route, !isNavigating {
                     let padding = UIEdgeInsets(top: 120, left: 48, bottom: 200, right: 48)
                     mapView.setVisibleMapRect(
                         route.polyline.boundingMapRect,
                         edgePadding: padding,
-                        animated: followChanged
+                        animated: followChanged && !routeChanged
                     )
                 } else if !isNavigating {
-                    mapView.setRegion(region, animated: followChanged)
+                    mapView.setRegion(region, animated: followChanged && !routeChanged)
                 }
                 context.coordinator.recordIdleViewport(parent: self)
                 context.coordinator.setProgrammaticChange(false)
@@ -118,12 +138,18 @@ struct MapCanvasView: UIViewRepresentable {
         context.coordinator.lastTrackingMode = trackingMode
     }
 
+    private static func routeFingerprint(for route: MKRoute?) -> String {
+        guard let route else { return "none" }
+        return RouteOption.fingerprint(route)
+    }
+
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: MapCanvasView
         var lastVehicleType: VehicleType?
         var lastTrackedPathRevision = -1
         var lastHadTracked = false
         var lastHadRoute = false
+        var lastRouteFingerprint: String?
         var lastRouteColor: UIColor?
         var lastTrackedColor: UIColor?
         var lastFollowUser = true
@@ -170,8 +196,12 @@ struct MapCanvasView: UIViewRepresentable {
             !parent.trackedPolylines.isEmpty != lastHadTracked || (parent.route != nil) != lastHadRoute
         }
 
-        func shouldApplyIdleViewport(parent: MapCanvasView, followChanged: Bool) -> Bool {
-            if followChanged { return true }
+        func shouldApplyIdleViewport(
+            parent: MapCanvasView,
+            followChanged: Bool,
+            routeChanged: Bool = false
+        ) -> Bool {
+            if followChanged || routeChanged { return true }
             let key = idleViewportKey(for: parent)
             return key != idleViewportKey
         }
@@ -181,12 +211,7 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         private func idleViewportKey(for parent: MapCanvasView) -> String {
-            let routeID: String
-            if let route = parent.route {
-                routeID = "\(route.distance)-\(route.expectedTravelTime)-\(route.polyline.pointCount)"
-            } else {
-                routeID = "none"
-            }
+            let routeID = MapCanvasView.routeFingerprint(for: parent.route)
             let region = parent.region
             return "\(routeID)-\(parent.isNavigating)-\(region.center.latitude)-\(region.center.longitude)-\(region.span.latitudeDelta)"
         }
