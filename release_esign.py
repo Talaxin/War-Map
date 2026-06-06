@@ -4,7 +4,6 @@ Refresh Feather / AltStore repo.json metadata from build/WarMap.ipa.
 
 Usage:
   python3 release_esign.py --description "Release notes."
-  python3 release_esign.py --bump --description "Release notes."
 """
 
 from __future__ import annotations
@@ -18,14 +17,6 @@ from pathlib import Path
 from typing import Any
 
 BUNDLE_ID = "com.talaxin.warmap"
-
-
-def bump_patch(version: str) -> str:
-    parts = version.split(".")
-    if len(parts) != 3:
-        raise ValueError(f"Invalid semver (expected x.y.z): {version}")
-    major, minor, patch = parts
-    return f"{major}.{minor}.{int(patch) + 1}"
 
 
 def read_json(path: Path) -> Any:
@@ -67,7 +58,6 @@ def main() -> int:
     parser.add_argument("--ipa", default="build/WarMap.ipa")
     parser.add_argument("--bundle-id", default=BUNDLE_ID)
     parser.add_argument("--description", default="Latest War Map update.")
-    parser.add_argument("--bump", action="store_true", help="Increment version by +0.0.1.")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -83,33 +73,44 @@ def main() -> int:
         known = [a.get("bundleIdentifier") for a in apps]
         raise ValueError(f"No app with bundleIdentifier {args.bundle_id!r}. Known: {known}")
 
-    versions = app.get("versions", [])
+    versions: list[dict[str, Any]] = list(app.get("versions", []))
     if not versions:
         raise ValueError("repo.json app has no versions[] entries")
-    latest = versions[0]
 
     now_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
     ipa_size = ipa_path.stat().st_size
     ipa_short_version, _ipa_build_version = read_ipa_versions(ipa_path)
+    if ipa_short_version is None:
+        raise ValueError("Could not read CFBundleShortVersionString from IPA")
 
     before_app_version = str(app.get("version", "0.0.0"))
-    after_app_version = before_app_version
-    if args.bump:
-        after_app_version = bump_patch(before_app_version)
-        app["version"] = after_app_version
-        latest["version"] = bump_patch(str(latest.get("version", before_app_version)))
-        if ipa_short_version is not None and ipa_short_version != after_app_version:
-            raise ValueError(
-                "IPA version mismatch: "
-                f"CFBundleShortVersionString={ipa_short_version} expected {after_app_version}. "
-                "Rebuild the IPA, then rerun release_esign.py."
-            )
+    after_app_version = ipa_short_version
+    download_url = app.get("downloadURL") or versions[0].get("downloadURL")
+    min_os = versions[0].get("minOSVersion", "16.0")
 
+    if not versions or str(versions[0].get("version")) != after_app_version:
+        versions.insert(
+            0,
+            {
+                "version": after_app_version,
+                "date": now_iso,
+                "localizedDescription": args.description,
+                "downloadURL": download_url,
+                "size": ipa_size,
+                "minOSVersion": min_os,
+            },
+        )
+    else:
+        versions[0]["date"] = now_iso
+        versions[0]["localizedDescription"] = args.description
+        versions[0]["size"] = ipa_size
+        if download_url:
+            versions[0]["downloadURL"] = download_url
+
+    app["versions"] = versions
+    app["version"] = after_app_version
     app["versionDate"] = now_iso
     app["versionDescription"] = args.description
-    latest["date"] = now_iso
-    latest["localizedDescription"] = args.description
-    latest["size"] = ipa_size
 
     if args.dry_run:
         print(f"[dry-run] {before_app_version} -> {after_app_version}, size={ipa_size}")
@@ -119,8 +120,7 @@ def main() -> int:
     print(f"Updated {repo_json_path}")
     print(f"Version: {before_app_version} -> {after_app_version}")
     print(f"IPA size: {ipa_size}")
-    if ipa_short_version:
-        print(f"IPA bundle version: {ipa_short_version}")
+    print(f"IPA bundle version: {ipa_short_version}")
     return 0
 
 

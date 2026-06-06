@@ -13,6 +13,9 @@ on:
       - "scripts/**"
       - ".github/workflows/build-ipa.yml"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-14
@@ -49,8 +52,28 @@ jobs:
       - name: Ensure bundle icons and version
         run: .ci-venv/bin/python scripts/patch_ipa.py
 
+      - name: Read marketing version
+        id: version
+        run: |
+          VERSION=$(grep -m1 'MARKETING_VERSION = ' WarMap.xcodeproj/project.pbxproj | sed 's/.*MARKETING_VERSION = \([^;]*\);/\1/' | tr -d ' ')
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Refresh repo.json metadata
-        run: .ci-venv/bin/python release_esign.py --description "v0.3.6 — Tracked roads color, Apple Maps-style map follow, and distance-based New Roads routing."
+        run: |
+          .ci-venv/bin/python release_esign.py \
+            --description "War Map v${{ steps.version.outputs.value }}."
+
+      - name: Publish IPA and repo.json to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build/WarMap.ipa repo.json
+          if git diff --staged --quiet; then
+            echo "No release changes to publish."
+            exit 0
+          fi
+          git commit -m "Publish War Map v${{ steps.version.outputs.value }} for Feather."
+          git push
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
