@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write Feather/AltStore listing icons from the same artwork embedded in the IPA."""
+"""Publish Feather repo icons the same way as Noir: 1024px RGB PNG at repo root."""
 
 from __future__ import annotations
 
@@ -16,11 +16,9 @@ SOURCE = ROOT / "warmap.png"
 IPA = ROOT / "build/WarMap.ipa"
 PBXPROJ = ROOT / "WarMap.xcodeproj/project.pbxproj"
 REPO_JSON = ROOT / "repo.json"
-ICONS_DIR = ROOT / "icons"
-# Direct raw URL — Feather/Nuke fails on github.com/raw 302 redirects.
-ICON_URL_BASE = "https://raw.githubusercontent.com/Talaxin/War-Map/main/icons"
-LISTING_SIZE = 256
-ICON_FILENAME = "source-icon.png"
+# Noir uses: https://raw.githubusercontent.com/Talaxin/Noir/main/noir.png
+ICON_URL = "https://raw.githubusercontent.com/Talaxin/War-Map/main/warmap.png"
+REPO_ICON = ROOT / "warmap.png"
 
 
 def read_project_version() -> str:
@@ -54,10 +52,10 @@ def load_icon_source() -> Image.Image:
     return image
 
 
-def listing_icon(source: Image.Image) -> Image.Image:
-    """Small opaque PNG that matches the installed app icon and loads in Feather."""
-    resized = source.resize((LISTING_SIZE, LISTING_SIZE), Image.Resampling.LANCZOS)
-    background = Image.new("RGB", (LISTING_SIZE, LISTING_SIZE), (0, 0, 0))
+def repo_listing_icon(source: Image.Image) -> Image.Image:
+    """1024x1024 opaque RGB — same layout as Noir/noir.png."""
+    resized = source.resize((1024, 1024), Image.Resampling.LANCZOS)
+    background = Image.new("RGB", (1024, 1024), (0, 0, 0))
     background.paste(resized, mask=resized.split()[3])
     return background
 
@@ -67,31 +65,22 @@ def write_png(path: Path, image: Image.Image) -> None:
     image.save(path, format="PNG", optimize=True, compress_level=9)
 
 
-def update_repo_json(icon_url: str) -> None:
+def update_repo_json() -> None:
     repo = json.loads(REPO_JSON.read_text(encoding="utf-8"))
-    repo["iconURL"] = icon_url
+    repo["iconURL"] = ICON_URL
     for app in repo.get("apps", []):
-        app["iconURL"] = icon_url
+        app["iconURL"] = ICON_URL
     REPO_JSON.write_text(json.dumps(repo, indent=2) + "\n", encoding="utf-8")
-    print(f"repo.json iconURL -> {icon_url}")
+    print(f"repo.json iconURL -> {ICON_URL}")
 
 
 def main() -> int:
     version = read_project_version()
-    source = load_icon_source()
-    icon = listing_icon(source)
-    icon_url = f"{ICON_URL_BASE}/{ICON_FILENAME}"
-
-    write_png(ICONS_DIR / ICON_FILENAME, icon)
-    # Keep legacy filenames in sync for bookmarks and older repo.json entries.
-    write_png(ICONS_DIR / "repo-icon.png", icon)
-    write_png(ICONS_DIR / f"repo-icon-{version}.png", icon)
-    write_png(ICONS_DIR / "feather-icon.png", icon)
-    write_png(ICONS_DIR / "app-icon.png", icon)
-
-    update_repo_json(icon_url)
-    size_kb = (ICONS_DIR / ICON_FILENAME).stat().st_size // 1024
-    print(f"Wrote {ICON_FILENAME} for v{version} ({LISTING_SIZE}px RGB, {size_kb} KB)")
+    icon = repo_listing_icon(load_icon_source())
+    write_png(REPO_ICON, icon)
+    update_repo_json()
+    size_kb = REPO_ICON.stat().st_size // 1024
+    print(f"Wrote warmap.png for v{version} (1024px RGB, {size_kb} KB)")
     return 0
 
 

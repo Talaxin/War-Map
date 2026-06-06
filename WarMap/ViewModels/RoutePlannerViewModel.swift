@@ -343,10 +343,12 @@ final class RoutePlannerViewModel: ObservableObject {
         defer { isCalculatingRoute = false }
 
         do {
+            let discoverAlternates = settings.newRoadPercent > 0
             let routes = try await directionsService.calculateRoutes(
                 from: start,
                 to: destination,
-                preferences: settings.routePreferences
+                preferences: settings.routePreferences,
+                discoverNewRoadAlternates: discoverAlternates
             )
             let newRoute = selectRouteWithNewRoadPreference(candidates: routes)
 
@@ -375,16 +377,9 @@ final class RoutePlannerViewModel: ObservableObject {
         let percent = max(0, min(100, settings.newRoadPercent))
         guard percent > 0 else { return fastest }
 
-        // Slider is distance-based: 50% on a 20 km fastest route requires at least 10 km untraveled.
-        let minNewMeters = (Double(percent) / 100.0) * fastest.distance
-
         struct Scored {
             let route: MKRoute
             let newMeters: CLLocationDistance
-
-            var newRatio: Double {
-                newMeters / max(route.distance, 1)
-            }
         }
 
         let scored: [Scored] = candidates.map { route in
@@ -394,19 +389,28 @@ final class RoutePlannerViewModel: ObservableObject {
             )
         }
 
-        // Prefer alternates that meet the minimum untraveled distance, staying closest to fastest.
-        if percent < 100,
-           let bestMeetingTarget = scored
-            .filter({ $0.newMeters >= minNewMeters })
-            .min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) {
-            return bestMeetingTarget.route
+        let fastestScore = scored.first(where: { $0.route === fastest })?.newMeters
+            ?? locationManager.estimateNewDistanceMeters(along: fastest.polyline)
+        let minNew = scored.map(\.newMeters).min() ?? fastestScore
+        let maxNew = scored.map(\.newMeters).max() ?? fastestScore
+
+        if abs(maxNew - minNew) < 50 {
+            return fastest
         }
 
-        // At 100%, or when no alternate meets the target, pick the most untraveled distance.
+        // Blend across available alternates so 50–100% visibly changes the route.
+        let slider = Double(percent) / 100.0
+        let spectrumTarget = minNew + slider * (maxNew - minNew)
+        let absoluteTarget = slider * fastest.distance
+        let targetNew = min(max(spectrumTarget, absoluteTarget), maxNew)
+
         return scored
-            .max(by: { lhs, rhs in
-                if lhs.newMeters != rhs.newMeters { return lhs.newMeters < rhs.newMeters }
-                if lhs.newRatio != rhs.newRatio { return lhs.newRatio < rhs.newRatio }
+            .min(by: { lhs, rhs in
+                let lhsDelta = abs(lhs.newMeters - targetNew)
+                let rhsDelta = abs(rhs.newMeters - targetNew)
+                if abs(lhsDelta - rhsDelta) > 1 {
+                    return lhsDelta > rhsDelta
+                }
                 return lhs.route.expectedTravelTime > rhs.route.expectedTravelTime
             })?
             .route ?? fastest
