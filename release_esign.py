@@ -107,7 +107,8 @@ def main() -> int:
         if download_url:
             versions[0]["downloadURL"] = download_url
 
-    app["versions"] = versions
+    # Feather/AltStore clients only need the current build; long histories slow source loading.
+    app["versions"] = versions[:1]
     app["version"] = after_app_version
     app["versionDate"] = now_iso
     app["versionDescription"] = args.description
