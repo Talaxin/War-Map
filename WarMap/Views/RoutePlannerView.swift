@@ -15,7 +15,7 @@ struct RoutePlannerView: View {
             MapCanvasView(
                 region: viewModel.mapRegion,
                 route: viewModel.route,
-                trackedPolyline: viewModel.trackedPolyline,
+                trackedPolylines: viewModel.locationManager.trackedPolylines,
                 start: viewModel.startPlace,
                 destination: viewModel.destinationPlace,
                 isNavigating: viewModel.isNavigating,
@@ -31,7 +31,6 @@ struct RoutePlannerView: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Spacer()
                     Button {
                         showSettings = true
                     } label: {
@@ -42,6 +41,7 @@ struct RoutePlannerView: View {
                             .background(.regularMaterial, in: Circle())
                     }
                     .accessibilityLabel("Settings")
+                    Spacer()
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 4)

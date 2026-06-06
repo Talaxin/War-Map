@@ -4,7 +4,7 @@ import SwiftUI
 struct MapCanvasView: UIViewRepresentable {
     let region: MKCoordinateRegion
     let route: MKRoute?
-    let trackedPolyline: MKPolyline?
+    let trackedPolylines: [MKPolyline]
     let start: MapPlace?
     let destination: MapPlace?
     let isNavigating: Bool
@@ -26,6 +26,7 @@ struct MapCanvasView: UIViewRepresentable {
         mapView.isRotateEnabled = false
         mapView.showsUserLocation = true
         mapView.showsCompass = true
+        mapView.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 140, right: 12)
         mapView.pointOfInterestFilter = .includingAll
         context.coordinator.installPanObserver(on: mapView)
         return mapView
@@ -49,7 +50,7 @@ struct MapCanvasView: UIViewRepresentable {
             || context.coordinator.lastRouteColor != routeColor
             || context.coordinator.lastTrackedColor != trackedColor {
             mapView.removeOverlays(mapView.overlays)
-            if let trackedPolyline {
+            for trackedPolyline in trackedPolylines {
                 mapView.addOverlay(trackedPolyline, level: .aboveRoads)
             }
             if let route {
@@ -57,7 +58,7 @@ struct MapCanvasView: UIViewRepresentable {
                 polyline.title = "route"
                 mapView.addOverlay(polyline, level: .aboveRoads)
             }
-            context.coordinator.lastHadTracked = trackedPolyline != nil
+            context.coordinator.lastHadTracked = !trackedPolylines.isEmpty
             context.coordinator.lastHadRoute = route != nil
             context.coordinator.lastRouteColor = routeColor
             context.coordinator.lastTrackedColor = trackedColor
@@ -166,7 +167,7 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         func needsOverlayRefresh(parent: MapCanvasView) -> Bool {
-            (parent.trackedPolyline != nil) != lastHadTracked || (parent.route != nil) != lastHadRoute
+            !parent.trackedPolylines.isEmpty != lastHadTracked || (parent.route != nil) != lastHadRoute
         }
 
         func shouldApplyIdleViewport(parent: MapCanvasView, followChanged: Bool) -> Bool {

@@ -137,6 +137,7 @@ final class RoutePlannerViewModel: ObservableObject {
 
     func onAppear() {
         locationManager.requestAccessIfNeeded()
+        locationManager.suspendTravelTracking()
         refreshStartFromCurrentLocation()
         if locationManager.isAuthorized {
             followUserOnMap = true

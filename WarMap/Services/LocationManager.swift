@@ -2,6 +2,7 @@ import Combine
 import CoreLocation
 import Foundation
 import MapKit
+import UIKit
 
 @MainActor
 final class LocationManager: NSObject, ObservableObject {
@@ -16,6 +17,9 @@ final class LocationManager: NSObject, ObservableObject {
     private var lastTrackedLocation: CLLocation?
     @Published private(set) var trackedPathRevision = 0
 
+    private let maxTrackingGapSeconds: TimeInterval = 90
+    private let maxTrackingGapMeters: CLLocationDistance = 200
+
     override init() {
         authorizationStatus = manager.authorizationStatus
         super.init()
@@ -23,6 +27,11 @@ final class LocationManager: NSObject, ObservableObject {
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = kCLDistanceFilterNone
         manager.pausesLocationUpdatesAutomatically = false
+        registerAppLifecycleObservers()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     var isAuthorized: Bool {
@@ -139,12 +148,62 @@ extension LocationManager {
         travelHistory.trackedPolyline
     }
 
+    var trackedPolylines: [MKPolyline] {
+        travelHistory.trackedPolylines
+    }
+
+    func suspendTravelTracking() {
+        lastTrackedLocation = nil
+    }
+
+    private func registerAppLifecycleObservers() {
+        let center = NotificationCenter.default
+        center.addObserver(
+            self,
+            selector: #selector(handleAppWillResignActive),
+            name: UIApplication.willResignActiveNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(handleAppDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleAppWillResignActive() {
+        suspendTravelTracking()
+    }
+
+    @objc private func handleAppDidEnterBackground() {
+        suspendTravelTracking()
+    }
+
     private func notifyTrackedPathChanged() {
         trackedPathRevision += 1
     }
 
+    private func hasTrackingGap(since previous: CLLocation, next: CLLocation) -> Bool {
+        let elapsed = next.timestamp.timeIntervalSince(previous.timestamp)
+        if elapsed > maxTrackingGapSeconds { return true }
+        if previous.distance(from: next) > maxTrackingGapMeters { return true }
+        if let lastPathPoint = travelHistory.lastPathPoint {
+            let gapFromSavedPath = CLLocation(latitude: lastPathPoint.latitude, longitude: lastPathPoint.longitude)
+                .distance(from: next)
+            if gapFromSavedPath > maxTrackingGapMeters { return true }
+        }
+        return false
+    }
+
     private func trackTravelIfPossible(_ location: CLLocation) {
         guard location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 35 else { return }
+
+        if let lastTrackedLocation {
+            if hasTrackingGap(since: lastTrackedLocation, next: location) {
+                self.lastTrackedLocation = nil
+            }
+        }
 
         if let lastTrackedLocation {
             let delta = location.distance(from: lastTrackedLocation)
@@ -153,13 +212,13 @@ extension LocationManager {
             let elapsed = max(location.timestamp.timeIntervalSince(lastTrackedLocation.timestamp), 0.5)
             let impliedSpeed = delta / elapsed
             let speed = location.speed >= 0 ? location.speed : impliedSpeed
-            // Record only when actually moving along roads (not stationary GPS drift).
             guard speed >= 2.5 else { return }
 
             travelHistory.recordTravel(from: lastTrackedLocation.coordinate, to: location.coordinate)
             self.lastTrackedLocation = location
             notifyTrackedPathChanged()
-        } else if location.speed >= 2.5 {
+        } else if location.speed < 0 || location.speed >= 2.5 {
+            travelHistory.beginSegmentIfNeeded(at: location.coordinate)
             travelHistory.recordVisit(at: location.coordinate)
             lastTrackedLocation = location
             notifyTrackedPathChanged()
@@ -174,8 +233,11 @@ final class TravelHistoryStore {
     private let cellSizeMeters: Double = 30
     private let saveDebounceSeconds: TimeInterval = 3
     private var visited = Set<Int64>()
-    private var pathPoints: [CLLocationCoordinate2D] = []
+    private var pathSegments: [[CLLocationCoordinate2D]] = []
+    private var lastPathPointDate: Date?
     private var saveTask: Task<Void, Never>?
+
+    private let maxPathGapMeters: CLLocationDistance = 200
 
     private var cellsFileURL: URL {
         appSupportFile(named: "visited-cells.plist")
@@ -196,12 +258,43 @@ final class TravelHistoryStore {
         load()
     }
 
+    var lastPathPoint: CLLocationCoordinate2D? {
+        pathSegments.last?.last
+    }
+
     var trackedPolyline: MKPolyline? {
-        guard pathPoints.count >= 2 else { return nil }
-        var coords = pathPoints
-        let polyline = MKPolyline(coordinates: &coords, count: coords.count)
-        polyline.title = "tracked"
-        return polyline
+        trackedPolylines.first
+    }
+
+    var trackedPolylines: [MKPolyline] {
+        pathSegments.compactMap { segment in
+            guard segment.count >= 2 else { return nil }
+            var coords = segment
+            let polyline = MKPolyline(coordinates: &coords, count: coords.count)
+            polyline.title = "tracked"
+            return polyline
+        }
+    }
+
+    func beginSegmentIfNeeded(at coordinate: CLLocationCoordinate2D) {
+        if pathSegments.isEmpty {
+            pathSegments.append([coordinate])
+            lastPathPointDate = Date()
+            return
+        }
+
+        guard let last = lastPathPoint else {
+            pathSegments.append([coordinate])
+            lastPathPointDate = Date()
+            return
+        }
+
+        let gap = CLLocation(latitude: last.latitude, longitude: last.longitude)
+            .distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
+        if gap > maxPathGapMeters {
+            pathSegments.append([coordinate])
+            lastPathPointDate = Date()
+        }
     }
 
     func isVisited(_ coordinate: CLLocationCoordinate2D) -> Bool {
@@ -215,7 +308,14 @@ final class TravelHistoryStore {
     }
 
     func recordTravel(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) {
-        // Sample along the driven segment so we don't miss cells at higher speeds.
+        let gap = CLLocation(latitude: from.latitude, longitude: from.longitude)
+            .distance(from: CLLocation(latitude: to.latitude, longitude: to.longitude))
+        guard gap <= maxPathGapMeters else {
+            beginSegmentIfNeeded(at: to)
+            recordVisit(at: to)
+            return
+        }
+
         let a = MKMapPoint(from)
         let b = MKMapPoint(to)
         let meters = a.distance(to: b)
@@ -234,12 +334,27 @@ final class TravelHistoryStore {
     }
 
     private func appendPathPoint(_ coordinate: CLLocationCoordinate2D) {
-        if let last = pathPoints.last {
+        if pathSegments.isEmpty {
+            pathSegments.append([coordinate])
+            lastPathPointDate = Date()
+            return
+        }
+
+        let segmentIndex = pathSegments.count - 1
+        if let last = pathSegments[segmentIndex].last {
             let lastLocation = CLLocation(latitude: last.latitude, longitude: last.longitude)
             let nextLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            guard lastLocation.distance(from: nextLocation) >= 8 else { return }
+            let gap = lastLocation.distance(from: nextLocation)
+            if gap > maxPathGapMeters {
+                pathSegments.append([coordinate])
+                lastPathPointDate = Date()
+                return
+            }
+            guard gap >= 8 else { return }
         }
-        pathPoints.append(coordinate)
+
+        pathSegments[segmentIndex].append(coordinate)
+        lastPathPointDate = Date()
     }
 
     func estimateNewDistanceMeters(along polyline: MKPolyline) -> CLLocationDistance {
@@ -284,7 +399,7 @@ final class TravelHistoryStore {
     private func scheduleSave() {
         saveTask?.cancel()
         let cells = visited
-        let path = pathPoints
+        let segments = pathSegments
         let cellsURL = cellsFileURL
         let pathURL = pathFileURL
         saveTask = Task {
@@ -293,8 +408,10 @@ final class TravelHistoryStore {
             if let data = try? PropertyListEncoder().encode(Array(cells)) {
                 try? data.write(to: cellsURL, options: [.atomic])
             }
-            let encodedPath = path.map { [$0.latitude, $0.longitude] }
-            if let data = try? PropertyListEncoder().encode(encodedPath) {
+            let encodedSegments = segments.map { segment in
+                segment.map { [$0.latitude, $0.longitude] }
+            }
+            if let data = try? PropertyListEncoder().encode(encodedSegments) {
                 try? data.write(to: pathURL, options: [.atomic])
             }
         }
@@ -305,11 +422,26 @@ final class TravelHistoryStore {
            let decoded = try? PropertyListDecoder().decode([Int64].self, from: data) {
             visited = Set(decoded)
         }
+
+        if let data = try? Data(contentsOf: pathFileURL),
+           let decoded = try? PropertyListDecoder().decode([[[Double]]].self, from: data) {
+            pathSegments = decoded.map { segment in
+                segment.compactMap { pair in
+                    guard pair.count == 2 else { return nil }
+                    return CLLocationCoordinate2D(latitude: pair[0], longitude: pair[1])
+                }
+            }.filter { !$0.isEmpty }
+            return
+        }
+
         if let data = try? Data(contentsOf: pathFileURL),
            let decoded = try? PropertyListDecoder().decode([[Double]].self, from: data) {
-            pathPoints = decoded.compactMap { pair in
+            let legacyPoints = decoded.compactMap { pair -> CLLocationCoordinate2D? in
                 guard pair.count == 2 else { return nil }
                 return CLLocationCoordinate2D(latitude: pair[0], longitude: pair[1])
+            }
+            if !legacyPoints.isEmpty {
+                pathSegments = [legacyPoints]
             }
         }
     }
