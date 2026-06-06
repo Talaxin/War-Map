@@ -21,6 +21,8 @@ final class RoutePlannerViewModel: ObservableObject {
     @Published var searchError: String?
 
     @Published private(set) var route: MKRoute?
+    @Published private(set) var routeOptions: [RouteOption] = []
+    @Published private(set) var selectedRouteOptionID: String?
     @Published private(set) var isCalculatingRoute = false
     @Published private(set) var isNavigating = false
     @Published private(set) var followUserOnMap = true
@@ -317,6 +319,11 @@ final class RoutePlannerViewModel: ObservableObject {
         syncMapTrackingHardware()
     }
 
+    func selectRouteOption(_ option: RouteOption) {
+        guard !isNavigating else { return }
+        applyRoute(option.route, selectedID: option.id)
+    }
+
     private func syncMapTrackingHardware() {
         locationManager.setFollowHeadingEnabled(
             followUserOnMap && mapTrackingMode == .followWithHeading
@@ -343,18 +350,22 @@ final class RoutePlannerViewModel: ObservableObject {
         defer { isCalculatingRoute = false }
 
         do {
-            let discoverAlternates = settings.newRoadPercent > 0
             let routes = try await directionsService.calculateRoutes(
                 from: start,
                 to: destination,
                 preferences: settings.routePreferences,
-                discoverNewRoadAlternates: discoverAlternates
+                discoverNewRoadAlternates: true
             )
-            let newRoute = selectRouteWithNewRoadPreference(candidates: routes)
+            let options = buildRouteOptions(from: routes)
+            routeOptions = options
 
-            route = newRoute
-            guidanceEngine.load(route: newRoute)
-            guidance = guidanceEngine.state
+            let previousID = selectedRouteOptionID
+            let defaultOption = preferredDefaultOption(from: options, previousID: previousID)
+            if let defaultOption {
+                applyRoute(defaultOption.route, selectedID: defaultOption.id)
+            } else {
+                clearRoute()
+            }
         } catch {
             clearRoute()
             if !Task.isCancelled {
@@ -365,55 +376,116 @@ final class RoutePlannerViewModel: ObservableObject {
 
     private func clearRoute() {
         route = nil
+        routeOptions = []
+        selectedRouteOptionID = nil
         guidanceEngine.reset()
         guidance = guidanceEngine.state
     }
 
-    private func selectRouteWithNewRoadPreference(candidates: [MKRoute]) -> MKRoute {
+    private func applyRoute(_ newRoute: MKRoute, selectedID: String) {
+        route = newRoute
+        selectedRouteOptionID = selectedID
+        guidanceEngine.load(route: newRoute)
+        guidance = guidanceEngine.state
+    }
+
+    private func buildRouteOptions(from candidates: [MKRoute]) -> [RouteOption] {
         guard let fastest = candidates.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
-            return candidates.first!
+            return []
         }
 
-        let percent = max(0, min(100, settings.newRoadPercent))
-        guard percent > 0 else { return fastest }
-
+        let baselineTime = fastest.expectedTravelTime
         struct Scored {
             let route: MKRoute
             let newMeters: CLLocationDistance
+            let additionalTime: TimeInterval
         }
 
         let scored: [Scored] = candidates.map { route in
             Scored(
                 route: route,
-                newMeters: locationManager.estimateNewDistanceMeters(along: route.polyline)
+                newMeters: locationManager.estimateNewDistanceMeters(along: route.polyline),
+                additionalTime: max(0, route.expectedTravelTime - baselineTime)
             )
         }
 
-        let fastestScore = scored.first(where: { $0.route === fastest })?.newMeters
-            ?? locationManager.estimateNewDistanceMeters(along: fastest.polyline)
-        let minNew = scored.map(\.newMeters).min() ?? fastestScore
-        let maxNew = scored.map(\.newMeters).max() ?? fastestScore
+        let percent = max(0, min(100, settings.newRoadPercent))
+        let slider = Double(percent) / 100.0
 
-        if abs(maxNew - minNew) < 50 {
-            return fastest
+        let pool: [Scored]
+        if slider <= 0 {
+            pool = scored
+        } else {
+            let minNew = scored.map(\.newMeters).min() ?? 0
+            let maxNew = scored.map(\.newMeters).max() ?? 0
+            let spectrumTarget = minNew + slider * (maxNew - minNew)
+            let absoluteTarget = slider * fastest.distance
+            let targetNew = min(max(spectrumTarget, absoluteTarget), maxNew)
+
+            pool = scored
+                .sorted { lhs, rhs in
+                    let lhsFit = abs(lhs.newMeters - targetNew)
+                    let rhsFit = abs(rhs.newMeters - targetNew)
+                    if abs(lhsFit - rhsFit) > 1 {
+                        return lhsFit < rhsFit
+                    }
+                    return lhs.additionalTime < rhs.additionalTime
+                }
+                .prefix(8)
+                .map { $0 }
         }
 
-        // Blend across available alternates so 50–100% visibly changes the route.
+        var options: [RouteOption] = []
+        var seenIDs: Set<String> = []
+        for item in pool.sorted(by: { $0.additionalTime < $1.additionalTime }) {
+            let id = RouteOption.fingerprint(item.route)
+            guard !seenIDs.contains(id) else { continue }
+            seenIDs.insert(id)
+            options.append(
+                RouteOption(
+                    id: id,
+                    route: item.route,
+                    additionalTime: item.additionalTime,
+                    newRoadMeters: item.newMeters
+                )
+            )
+            if options.count == 3 { break }
+        }
+
+        return options
+    }
+
+    private func preferredDefaultOption(from options: [RouteOption], previousID: String?) -> RouteOption? {
+        guard !options.isEmpty else { return nil }
+
+        if let previousID, let kept = options.first(where: { $0.id == previousID }) {
+            return kept
+        }
+
+        let percent = max(0, min(100, settings.newRoadPercent))
+        guard percent > 0 else {
+            return options.first
+        }
+
+        guard let baseline = options.map(\.route).min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
+            return options.first
+        }
+
+        let minNew = options.map(\.newRoadMeters).min() ?? 0
+        let maxNew = options.map(\.newRoadMeters).max() ?? 0
         let slider = Double(percent) / 100.0
         let spectrumTarget = minNew + slider * (maxNew - minNew)
-        let absoluteTarget = slider * fastest.distance
+        let absoluteTarget = slider * baseline.distance
         let targetNew = min(max(spectrumTarget, absoluteTarget), maxNew)
 
-        return scored
-            .min(by: { lhs, rhs in
-                let lhsDelta = abs(lhs.newMeters - targetNew)
-                let rhsDelta = abs(rhs.newMeters - targetNew)
-                if abs(lhsDelta - rhsDelta) > 1 {
-                    return lhsDelta > rhsDelta
-                }
-                return lhs.route.expectedTravelTime > rhs.route.expectedTravelTime
-            })?
-            .route ?? fastest
+        return options.min(by: { lhs, rhs in
+            let lhsFit = abs(lhs.newRoadMeters - targetNew)
+            let rhsFit = abs(rhs.newRoadMeters - targetNew)
+            if abs(lhsFit - rhsFit) > 1 {
+                return lhsFit < rhsFit
+            }
+            return lhs.additionalTime < rhs.additionalTime
+        })
     }
 
     private func announceGuidanceIfNeeded() {

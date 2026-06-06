@@ -98,14 +98,24 @@ struct RoutePlannerView: View {
         .animation(.easeInOut(duration: 0.25), value: viewModel.isSearchPanelExpanded)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if viewModel.hasRoute || viewModel.isCalculatingRoute {
-                DirectionsBannerView(
-                    guidance: viewModel.guidance,
-                    isNavigating: viewModel.isNavigating,
-                    isCalculatingRoute: viewModel.isCalculatingRoute,
-                    hasRoute: viewModel.hasRoute,
-                    onStart: viewModel.startNavigation,
-                    onStop: viewModel.stopNavigation
-                )
+                VStack(spacing: 8) {
+                    if viewModel.routeOptions.count > 1, !viewModel.isNavigating {
+                        RouteOptionsPickerView(
+                            options: viewModel.routeOptions,
+                            selectedID: viewModel.selectedRouteOptionID,
+                            onSelect: viewModel.selectRouteOption
+                        )
+                    }
+
+                    DirectionsBannerView(
+                        guidance: viewModel.guidance,
+                        isNavigating: viewModel.isNavigating,
+                        isCalculatingRoute: viewModel.isCalculatingRoute,
+                        hasRoute: viewModel.hasRoute,
+                        onStart: viewModel.startNavigation,
+                        onStop: viewModel.stopNavigation
+                    )
+                }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
             }
