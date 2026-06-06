@@ -30,7 +30,7 @@ struct RoutePlannerView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack {
+                HStack(alignment: .top, spacing: 8) {
                     Button {
                         showSettings = true
                     } label: {
@@ -41,28 +41,31 @@ struct RoutePlannerView: View {
                             .background(.regularMaterial, in: Circle())
                     }
                     .accessibilityLabel("Settings")
-                    Spacer()
+
+                    Group {
+                        if viewModel.isSearchPanelExpanded {
+                            expandedSearchCard
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        } else {
+                            collapsedSearchBar
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    // Reserve space for the map compass (top-right).
+                    Color.clear
+                        .frame(width: 44, height: 44)
+                        .accessibilityHidden(true)
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
-
-                if viewModel.isSearchPanelExpanded {
-                    expandedSearchCard
-                        .padding(.horizontal, 12)
-                        .padding(.top, 4)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                } else {
-                    collapsedSearchBar
-                        .padding(.horizontal, 12)
-                        .padding(.top, 4)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
 
                 if let error = viewModel.searchError {
                     Text(error)
                         .font(.footnote)
                         .foregroundStyle(.red)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 64)
                         .padding(.top, 8)
                 }
 
@@ -142,7 +145,7 @@ struct RoutePlannerView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         }
