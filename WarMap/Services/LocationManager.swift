@@ -14,6 +14,7 @@ final class LocationManager: NSObject, ObservableObject {
     private var isNavigationMode = false
     private let travelHistory = TravelHistoryStore()
     private var lastTrackedLocation: CLLocation?
+    @Published private(set) var trackedPathRevision = 0
 
     override init() {
         authorizationStatus = manager.authorizationStatus
@@ -49,17 +50,32 @@ final class LocationManager: NSObject, ObservableObject {
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         manager.distanceFilter = 8
         manager.startUpdatingLocation()
-        if CLLocationManager.headingAvailable() {
-            manager.startUpdatingHeading()
-        }
+        updateHeadingUpdates()
     }
 
     func stopNavigationUpdates() {
         isNavigationMode = false
-        manager.stopUpdatingHeading()
+        updateHeadingUpdates()
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = kCLDistanceFilterNone
         manager.startUpdatingLocation()
+    }
+
+    /// Enables compass heading for map follow-with-heading mode (outside navigation).
+    func setFollowHeadingEnabled(_ enabled: Bool) {
+        wantsHeadingForMap = enabled
+        updateHeadingUpdates()
+    }
+
+    private var wantsHeadingForMap = false
+
+    private func updateHeadingUpdates() {
+        let needsHeading = (isNavigationMode || wantsHeadingForMap) && CLLocationManager.headingAvailable()
+        if needsHeading {
+            manager.startUpdatingHeading()
+        } else {
+            manager.stopUpdatingHeading()
+        }
     }
 
     private func reverseGeocode(_ location: CLLocation) {
@@ -119,6 +135,14 @@ extension LocationManager {
         travelHistory.estimateNewDistanceMeters(along: polyline)
     }
 
+    var trackedPolyline: MKPolyline? {
+        travelHistory.trackedPolyline
+    }
+
+    private func notifyTrackedPathChanged() {
+        trackedPathRevision += 1
+    }
+
     private func trackTravelIfPossible(_ location: CLLocation) {
         guard location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 35 else { return }
 
@@ -134,9 +158,11 @@ extension LocationManager {
 
             travelHistory.recordTravel(from: lastTrackedLocation.coordinate, to: location.coordinate)
             self.lastTrackedLocation = location
+            notifyTrackedPathChanged()
         } else if location.speed >= 2.5 {
             travelHistory.recordVisit(at: location.coordinate)
             lastTrackedLocation = location
+            notifyTrackedPathChanged()
         }
     }
 }
@@ -148,17 +174,34 @@ final class TravelHistoryStore {
     private let cellSizeMeters: Double = 30
     private let saveDebounceSeconds: TimeInterval = 3
     private var visited = Set<Int64>()
+    private var pathPoints: [CLLocationCoordinate2D] = []
     private var saveTask: Task<Void, Never>?
 
-    private var fileURL: URL {
+    private var cellsFileURL: URL {
+        appSupportFile(named: "visited-cells.plist")
+    }
+
+    private var pathFileURL: URL {
+        appSupportFile(named: "driven-path.plist")
+    }
+
+    private func appSupportFile(named: String) -> URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDir = dir.appendingPathComponent("WarMap", isDirectory: true)
         try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
-        return appDir.appendingPathComponent("visited-cells.plist")
+        return appDir.appendingPathComponent(named)
     }
 
     init() {
         load()
+    }
+
+    var trackedPolyline: MKPolyline? {
+        guard pathPoints.count >= 2 else { return nil }
+        var coords = pathPoints
+        let polyline = MKPolyline(coordinates: &coords, count: coords.count)
+        polyline.title = "tracked"
+        return polyline
     }
 
     func isVisited(_ coordinate: CLLocationCoordinate2D) -> Bool {
@@ -167,6 +210,7 @@ final class TravelHistoryStore {
 
     func recordVisit(at coordinate: CLLocationCoordinate2D) {
         visited.insert(cellKey(for: coordinate))
+        appendPathPoint(coordinate)
         scheduleSave()
     }
 
@@ -185,7 +229,17 @@ final class TravelHistoryStore {
             let y = a.y + (b.y - a.y) * t
             visited.insert(cellKey(forMapPointX: x, y: y))
         }
+        appendPathPoint(to)
         scheduleSave()
+    }
+
+    private func appendPathPoint(_ coordinate: CLLocationCoordinate2D) {
+        if let last = pathPoints.last {
+            let lastLocation = CLLocation(latitude: last.latitude, longitude: last.longitude)
+            let nextLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            guard lastLocation.distance(from: nextLocation) >= 8 else { return }
+        }
+        pathPoints.append(coordinate)
     }
 
     func estimateNewDistanceMeters(along polyline: MKPolyline) -> CLLocationDistance {
@@ -194,30 +248,24 @@ final class TravelHistoryStore {
         var newDistance: CLLocationDistance = 0
 
         for i in 1..<polyline.pointCount {
-            let a = MKMapPoint(pts[i - 1].coordinate)
-            let b = MKMapPoint(pts[i].coordinate)
-            let segmentMeters = a.distance(to: b)
+            let start = pts[i - 1].coordinate
+            let end = pts[i].coordinate
+            let segmentMeters = MKMapPoint(start).distance(to: MKMapPoint(end))
             guard segmentMeters > 0 else { continue }
 
             let samples = max(Int(ceil(segmentMeters / (cellSizeMeters * 0.5))), 1)
-            var segmentNew: CLLocationDistance = 0
-            for s in 0..<samples {
-                let t0 = Double(s) / Double(samples)
-                let t1 = Double(s + 1) / Double(samples)
-                let p0 = CLLocationCoordinate2D(
-                    latitude: pts[i - 1].coordinate.latitude + (pts[i].coordinate.latitude - pts[i - 1].coordinate.latitude) * t0,
-                    longitude: pts[i - 1].coordinate.longitude + (pts[i].coordinate.longitude - pts[i - 1].coordinate.longitude) * t0
+            var unvisitedSamples = 0
+            for s in 0...samples {
+                let t = Double(s) / Double(samples)
+                let point = CLLocationCoordinate2D(
+                    latitude: start.latitude + (end.latitude - start.latitude) * t,
+                    longitude: start.longitude + (end.longitude - start.longitude) * t
                 )
-                let p1 = CLLocationCoordinate2D(
-                    latitude: pts[i - 1].coordinate.latitude + (pts[i].coordinate.latitude - pts[i - 1].coordinate.latitude) * t1,
-                    longitude: pts[i - 1].coordinate.longitude + (pts[i].coordinate.longitude - pts[i - 1].coordinate.longitude) * t1
-                )
-                if !isVisited(p0) && !isVisited(p1) {
-                    segmentNew += CLLocation(latitude: p0.latitude, longitude: p0.longitude)
-                        .distance(from: CLLocation(latitude: p1.latitude, longitude: p1.longitude))
+                if !isVisited(point) {
+                    unvisitedSamples += 1
                 }
             }
-            newDistance += segmentNew
+            newDistance += segmentMeters * Double(unvisitedSamples) / Double(samples + 1)
         }
         return newDistance
     }
@@ -235,20 +283,34 @@ final class TravelHistoryStore {
 
     private func scheduleSave() {
         saveTask?.cancel()
-        saveTask = Task { [fileURL, visited] in
+        let cells = visited
+        let path = pathPoints
+        let cellsURL = cellsFileURL
+        let pathURL = pathFileURL
+        saveTask = Task {
             try? await Task.sleep(nanoseconds: UInt64(saveDebounceSeconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
-            let array = Array(visited)
-            if let data = try? PropertyListEncoder().encode(array) {
-                try? data.write(to: fileURL, options: [.atomic])
+            if let data = try? PropertyListEncoder().encode(Array(cells)) {
+                try? data.write(to: cellsURL, options: [.atomic])
+            }
+            let encodedPath = path.map { [$0.latitude, $0.longitude] }
+            if let data = try? PropertyListEncoder().encode(encodedPath) {
+                try? data.write(to: pathURL, options: [.atomic])
             }
         }
     }
 
     private func load() {
-        let url = fileURL
-        guard let data = try? Data(contentsOf: url) else { return }
-        guard let decoded = try? PropertyListDecoder().decode([Int64].self, from: data) else { return }
-        visited = Set(decoded)
+        if let data = try? Data(contentsOf: cellsFileURL),
+           let decoded = try? PropertyListDecoder().decode([Int64].self, from: data) {
+            visited = Set(decoded)
+        }
+        if let data = try? Data(contentsOf: pathFileURL),
+           let decoded = try? PropertyListDecoder().decode([[Double]].self, from: data) {
+            pathPoints = decoded.compactMap { pair in
+                guard pair.count == 2 else { return nil }
+                return CLLocationCoordinate2D(latitude: pair[0], longitude: pair[1])
+            }
+        }
     }
 }

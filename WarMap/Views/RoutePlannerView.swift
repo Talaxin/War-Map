@@ -15,13 +15,16 @@ struct RoutePlannerView: View {
             MapCanvasView(
                 region: viewModel.mapRegion,
                 route: viewModel.route,
+                trackedPolyline: viewModel.trackedPolyline,
                 start: viewModel.startPlace,
                 destination: viewModel.destinationPlace,
                 isNavigating: viewModel.isNavigating,
                 followUser: viewModel.followUserOnMap,
+                trackingMode: viewModel.mapTrackingMode,
                 routeColor: viewModel.routeUIColor,
+                trackedColor: viewModel.trackedUIColor,
                 vehicleType: viewModel.settings.vehicleType,
-                recenterToken: viewModel.recenterToken,
+                trackedPathRevision: viewModel.locationManager.trackedPathRevision,
                 onUserInteraction: viewModel.userDidInteractWithMap
             )
             .ignoresSafeArea()
@@ -66,20 +69,23 @@ struct RoutePlannerView: View {
                 Spacer(minLength: 0)
             }
 
-            if viewModel.isNavigating || viewModel.hasRoute {
+            if viewModel.locationManager.isAuthorized {
                 VStack {
                     Spacer()
                     HStack {
                         Spacer()
                         Button(action: viewModel.recenterOnUser) {
-                            Image(systemName: "location.fill")
+                            Image(systemName: viewModel.centerButtonSymbolName)
                                 .font(.title3.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(viewModel.followUserOnMap ? .white : Color.accentColor)
                                 .frame(width: 48, height: 48)
-                                .background(Color.accentColor, in: Circle())
+                                .background(
+                                    viewModel.followUserOnMap ? Color.accentColor : Color(.systemBackground),
+                                    in: Circle()
+                                )
                                 .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
                         }
-                        .accessibilityLabel("Re-center on your location")
+                        .accessibilityLabel(viewModel.centerButtonAccessibilityLabel)
                         .padding(.trailing, 16)
                         .padding(.bottom, 8)
                     }

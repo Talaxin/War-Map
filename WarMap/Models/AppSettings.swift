@@ -40,6 +40,7 @@ enum RouteColorOption: String, CaseIterable, Identifiable {
     case orange
     case purple
     case red
+    case gray
 
     var id: String { rawValue }
 
@@ -52,6 +53,7 @@ enum RouteColorOption: String, CaseIterable, Identifiable {
         case .orange: return .orange
         case .purple: return .purple
         case .red: return .red
+        case .gray: return .gray
         }
     }
 
@@ -62,6 +64,7 @@ enum RouteColorOption: String, CaseIterable, Identifiable {
         case .orange: return .systemOrange
         case .purple: return .systemPurple
         case .red: return .systemRed
+        case .gray: return .systemGray
         }
     }
 }
@@ -105,6 +108,9 @@ final class AppSettings: ObservableObject {
     @Published var routeColor: RouteColorOption {
         didSet { persist(routeColor.rawValue, for: .routeColor) }
     }
+    @Published var trackedColor: RouteColorOption {
+        didSet { persist(trackedColor.rawValue, for: .trackedColor) }
+    }
     @Published var vehicleType: VehicleType {
         didSet { persist(vehicleType.rawValue, for: .vehicleType) }
     }
@@ -133,13 +139,14 @@ final class AppSettings: ObservableObject {
     let voiceOptions: [VoiceOption]
 
     private enum Key: String {
-        case routeColor, vehicleType, voiceEnabled, voiceID, newRoadPercent
+        case routeColor, trackedColor, vehicleType, voiceEnabled, voiceID, newRoadPercent
         case allowHighways, allowFerries, allowCrossBorder, allowTollRoads
     }
 
     init() {
         let defaults = UserDefaults.standard
         routeColor = RouteColorOption(rawValue: defaults.string(forKey: Key.routeColor.rawValue) ?? "") ?? .blue
+        trackedColor = RouteColorOption(rawValue: defaults.string(forKey: Key.trackedColor.rawValue) ?? "") ?? .gray
         vehicleType = VehicleType(rawValue: defaults.string(forKey: Key.vehicleType.rawValue) ?? "") ?? .blueDot
         voiceGuidanceEnabled = defaults.object(forKey: Key.voiceEnabled.rawValue) as? Bool ?? false
         selectedVoiceID = defaults.string(forKey: Key.voiceID.rawValue) ?? VoiceOption.systemDefault.id

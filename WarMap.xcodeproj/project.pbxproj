@@ -24,6 +24,7 @@
 		A100000100000000000021 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000021 /* AppSettings.swift */; };
 		A100000100000000000022 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000022 /* SettingsView.swift */; };
 		A100000100000000000023 /* KeyboardDismiss.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000023 /* KeyboardDismiss.swift */; };
+		A100000100000000000024 /* MapTrackingMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000024 /* MapTrackingMode.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +46,7 @@
 		A100000200000000000021 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		A100000200000000000022 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A100000200000000000023 /* KeyboardDismiss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardDismiss.swift; sourceTree = "<group>"; };
+		A100000200000000000024 /* MapTrackingMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapTrackingMode.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +96,7 @@
 			children = (
 				A10000020000000000000010 /* MapPlace.swift */,
 				A100000200000000000021 /* AppSettings.swift */,
+				A100000200000000000024 /* MapTrackingMode.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -223,6 +226,7 @@
 				A100000100000000000018 /* VoiceGuidanceService.swift in Sources */,
 				A100000100000000000017 /* NavigationGuidanceEngine.swift in Sources */,
 				A100000100000000000016 /* RouteDirectionsService.swift in Sources */,
+				A100000100000000000024 /* MapTrackingMode.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,7 +282,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 0.3.5;
+				CURRENT_PROJECT_VERSION = 0.3.6;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -292,7 +296,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.5;
+				MARKETING_VERSION = 0.3.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -309,7 +313,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 0.3.5;
+				CURRENT_PROJECT_VERSION = 0.3.6;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -323,7 +327,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.5;
+				MARKETING_VERSION = 0.3.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

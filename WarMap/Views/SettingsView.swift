@@ -12,7 +12,7 @@ struct SettingsView: View {
                 } label: {
                     SettingsRowLabel(
                         title: "Route Appearance",
-                        subtitle: settings.routeColor.label,
+                        subtitle: "\(settings.routeColor.label) route, \(settings.trackedColor.label) tracked",
                         systemImage: "point.topleft.down.curvedto.point.bottomright.up"
                     )
                 }
@@ -56,6 +56,17 @@ struct SettingsView: View {
                         systemImage: "arrow.triangle.turn.up.right.diamond.fill"
                     )
                 }
+
+                Section {
+                    HStack {
+                        Spacer()
+                        Text("Version \(appVersion)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -75,6 +86,10 @@ struct SettingsView: View {
             settings.allowTollRoads ? "Tolls" : nil,
         ].compactMap { $0 }
         return enabled.isEmpty ? "None" : enabled.joined(separator: ", ")
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
 }
 
@@ -118,8 +133,21 @@ private struct RouteAppearanceSettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+
+                Picker("Tracked roads", selection: $settings.trackedColor) {
+                    ForEach(RouteColorOption.allCases) { option in
+                        HStack {
+                            Circle()
+                                .fill(option.color)
+                                .frame(width: 14, height: 14)
+                            Text(option.label)
+                        }
+                        .tag(option)
+                    }
+                }
+                .pickerStyle(.inline)
             } footer: {
-                Text("Color of the driving route line on the map.")
+                Text("Route color is the active path to your destination. Tracked roads show where you have actually driven.")
             }
         }
         .navigationTitle("Route Appearance")
@@ -196,7 +224,7 @@ private struct NewRoadSettingsView: View {
                     )
                 }
             } footer: {
-                Text("War Map remembers roads you have actually driven. At 0% you get the fastest route. Higher values prefer alternates with more untraveled distance while staying as close to the fastest route as possible.")
+                Text("War Map remembers roads you have actually driven. At 0% you get the fastest route. Higher values require more untraveled distance along the trip — 50% on a 20 km route means at least 10 km of roads you have not driven. At 100% War Map picks the route with the most new roads; some overlap is unavoidable when only one path exists.")
             }
         }
         .navigationTitle("New Road")

@@ -23,10 +23,10 @@ final class RoutePlannerViewModel: ObservableObject {
     @Published private(set) var route: MKRoute?
     @Published private(set) var isCalculatingRoute = false
     @Published private(set) var isNavigating = false
-    @Published private(set) var followUserOnMap = false
+    @Published private(set) var followUserOnMap = true
+    @Published private(set) var mapTrackingMode: MapTrackingMode = .follow
     @Published private(set) var guidance = NavigationGuidanceState()
     @Published var isSearchPanelExpanded = true
-    @Published private(set) var recenterToken = 0
 
     let locationManager = LocationManager()
     let settings: AppSettings
@@ -45,6 +45,22 @@ final class RoutePlannerViewModel: ObservableObject {
     var hasRoute: Bool { route != nil }
 
     var routeUIColor: UIColor { settings.routeColor.uiColor }
+
+    var trackedUIColor: UIColor { settings.trackedColor.uiColor }
+
+    var trackedPolyline: MKPolyline? { locationManager.trackedPolyline }
+
+    var centerButtonSymbolName: String {
+        guard followUserOnMap else { return "location.fill" }
+        return mapTrackingMode == .followWithHeading ? "location.north.line.fill" : "location.fill"
+    }
+
+    var centerButtonAccessibilityLabel: String {
+        guard followUserOnMap else { return "Center on your location" }
+        return mapTrackingMode == .followWithHeading
+            ? "Follow heading"
+            : "Center on your location, north up"
+    }
 
     var startDisplayText: String {
         if startUsesCurrentLocation {
@@ -122,6 +138,11 @@ final class RoutePlannerViewModel: ObservableObject {
     func onAppear() {
         locationManager.requestAccessIfNeeded()
         refreshStartFromCurrentLocation()
+        if locationManager.isAuthorized {
+            followUserOnMap = true
+            mapTrackingMode = .follow
+        }
+        syncMapTrackingHardware()
     }
 
     func focus(_ field: RouteField) {
@@ -258,9 +279,10 @@ final class RoutePlannerViewModel: ObservableObject {
         guard route != nil else { return }
         isNavigating = true
         followUserOnMap = true
+        mapTrackingMode = .follow
+        syncMapTrackingHardware()
         collapseSearchPanel()
         locationManager.startNavigationUpdates()
-        recenterOnUser()
         if let location = locationManager.currentLocation {
             _ = guidanceEngine.update(userLocation: location)
             guidance = guidanceEngine.state
@@ -270,20 +292,34 @@ final class RoutePlannerViewModel: ObservableObject {
 
     func stopNavigation() {
         isNavigating = false
-        followUserOnMap = false
         locationManager.stopNavigationUpdates()
         voiceGuidance.stop()
+        if locationManager.isAuthorized {
+            followUserOnMap = true
+            mapTrackingMode = .follow
+        }
+        syncMapTrackingHardware()
     }
 
     func recenterOnUser() {
-        followUserOnMap = true
-        recenterToken += 1
+        if !followUserOnMap {
+            followUserOnMap = true
+            mapTrackingMode = .follow
+        } else {
+            mapTrackingMode = mapTrackingMode == .follow ? .followWithHeading : .follow
+        }
+        syncMapTrackingHardware()
     }
 
     func userDidInteractWithMap() {
-        if isNavigating {
-            followUserOnMap = false
-        }
+        followUserOnMap = false
+        syncMapTrackingHardware()
+    }
+
+    private func syncMapTrackingHardware() {
+        locationManager.setFollowHeadingEnabled(
+            followUserOnMap && mapTrackingMode == .followWithHeading
+        )
     }
 
     func scheduleRouteCalculation() {
@@ -335,36 +371,43 @@ final class RoutePlannerViewModel: ObservableObject {
             return candidates.first!
         }
 
-        // Target: x% of the chosen route distance should be on unvisited cells.
-        let target = Double(max(0, min(100, settings.newRoadPercent))) / 100.0
-        guard target > 0 else { return fastest }
+        let percent = max(0, min(100, settings.newRoadPercent))
+        guard percent > 0 else { return fastest }
+
+        // Slider is distance-based: 50% on a 20 km fastest route requires at least 10 km untraveled.
+        let minNewMeters = (Double(percent) / 100.0) * fastest.distance
 
         struct Scored {
             let route: MKRoute
-            let newRatio: Double
+            let newMeters: CLLocationDistance
+
+            var newRatio: Double {
+                newMeters / max(route.distance, 1)
+            }
         }
 
         let scored: [Scored] = candidates.map { route in
-            let newMeters = locationManager.estimateNewDistanceMeters(along: route.polyline)
-            let total = max(route.distance, 1)
-            return Scored(route: route, newRatio: newMeters / total)
+            Scored(
+                route: route,
+                newMeters: locationManager.estimateNewDistanceMeters(along: route.polyline)
+            )
         }
 
-        // First try to satisfy the target and stay as close as possible to the fastest route.
-        if let bestMeetingTarget = scored
-            .filter({ $0.newRatio >= target })
+        // Prefer alternates that meet the minimum untraveled distance, staying closest to fastest.
+        if percent < 100,
+           let bestMeetingTarget = scored
+            .filter({ $0.newMeters >= minNewMeters })
             .min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) {
             return bestMeetingTarget.route
         }
 
-        // If no alternate meets the target, pick the route with the most "new" distance,
-        // breaking ties toward shorter travel time (still keeps things close to fastest).
+        // At 100%, or when no alternate meets the target, pick the most untraveled distance.
         return scored
-            .sorted {
-                if $0.newRatio != $1.newRatio { return $0.newRatio > $1.newRatio }
-                return $0.route.expectedTravelTime < $1.route.expectedTravelTime
-            }
-            .first?
+            .max(by: { lhs, rhs in
+                if lhs.newMeters != rhs.newMeters { return lhs.newMeters < rhs.newMeters }
+                if lhs.newRatio != rhs.newRatio { return lhs.newRatio < rhs.newRatio }
+                return lhs.route.expectedTravelTime > rhs.route.expectedTravelTime
+            })?
             .route ?? fastest
     }
 

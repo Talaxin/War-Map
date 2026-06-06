@@ -50,7 +50,7 @@ jobs:
         run: .ci-venv/bin/python scripts/patch_ipa.py
 
       - name: Refresh repo.json metadata
-        run: .ci-venv/bin/python release_esign.py --description "v0.3.5 — Persistent road memory and New Roads routing."
+        run: .ci-venv/bin/python release_esign.py --description "v0.3.6 — Tracked roads color, Apple Maps-style map follow, and distance-based New Roads routing."
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
