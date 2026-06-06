@@ -18,6 +18,7 @@ struct RoutePlannerView: View {
                 trackedPolylines: viewModel.locationManager.trackedPolylines,
                 start: viewModel.startPlace,
                 destination: viewModel.destinationPlace,
+                showsStartPin: !viewModel.startUsesCurrentLocation,
                 isNavigating: viewModel.isNavigating,
                 followUser: viewModel.followUserOnMap,
                 trackingMode: viewModel.mapTrackingMode,

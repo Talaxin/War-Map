@@ -1,5 +1,6 @@
 import MapKit
 import SwiftUI
+import UIKit
 
 struct MapCanvasView: UIViewRepresentable {
     let region: MKCoordinateRegion
@@ -7,6 +8,7 @@ struct MapCanvasView: UIViewRepresentable {
     let trackedPolylines: [MKPolyline]
     let start: MapPlace?
     let destination: MapPlace?
+    let showsStartPin: Bool
     let isNavigating: Bool
     let followUser: Bool
     let trackingMode: MapTrackingMode
@@ -81,16 +83,16 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
-        if let start, !isNavigating {
+        if let start, showsStartPin, !isNavigating {
             let annotation = MKPointAnnotation()
             annotation.coordinate = start.coordinate
-            annotation.title = start.title
+            annotation.title = "start"
             mapView.addAnnotation(annotation)
         }
         if let destination {
             let annotation = MKPointAnnotation()
             annotation.coordinate = destination.coordinate
-            annotation.title = destination.title
+            annotation.title = "destination"
             mapView.addAnnotation(annotation)
         }
 
@@ -222,23 +224,69 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            guard annotation is MKUserLocation else { return nil }
-            guard !parent.vehicleType.usesSystemUserLocation else { return nil }
+            if annotation is MKUserLocation {
+                guard !parent.vehicleType.usesSystemUserLocation else { return nil }
 
-            let identifier = "CustomUserLocation"
+                let identifier = "CustomUserLocation"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+                    ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+
+                view.annotation = annotation
+                view.canShowCallout = false
+                let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
+                let image = UIImage(
+                    systemName: parent.vehicleType.symbolName,
+                    withConfiguration: symbolConfig
+                )?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+                view.image = image
+                view.centerOffset = CGPoint(x: 0, y: -((image?.size.height ?? 24) / 2))
+                return view
+            }
+
+            guard let point = annotation as? MKPointAnnotation else { return nil }
+
+            let identifier: String
+            let color: UIColor
+            switch point.title {
+            case "start":
+                identifier = "StartPin"
+                color = .systemBlue
+            case "destination":
+                identifier = "DestinationPin"
+                color = .systemRed
+            default:
+                return nil
+            }
+
             let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
                 ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-
             view.annotation = annotation
             view.canShowCallout = false
-            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
-            let image = UIImage(
-                systemName: parent.vehicleType.symbolName,
-                withConfiguration: symbolConfig
-            )?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
-            view.image = image
-            view.centerOffset = CGPoint(x: 0, y: -((image?.size.height ?? 24) / 2))
+            view.image = pinImage(color: color)
+            view.centerOffset = CGPoint(x: 0, y: -((view.image?.size.height ?? 28) / 2))
             return view
+        }
+
+        private func pinImage(color: UIColor) -> UIImage {
+            let size = CGSize(width: 24, height: 28)
+            let renderer = UIGraphicsImageRenderer(size: size)
+            return renderer.image { _ in
+                color.setFill()
+                let path = UIBezierPath()
+                path.move(to: CGPoint(x: size.width / 2, y: size.height))
+                path.addLine(to: CGPoint(x: size.width, y: size.height * 0.45))
+                path.addArc(
+                    withCenter: CGPoint(x: size.width / 2, y: size.height * 0.35),
+                    radius: size.width / 2,
+                    startAngle: 0,
+                    endAngle: .pi,
+                    clockwise: true
+                )
+                path.close()
+                path.fill()
+                UIColor.white.setFill()
+                UIBezierPath(ovalIn: CGRect(x: 7, y: 5, width: 10, height: 10)).fill()
+            }
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {

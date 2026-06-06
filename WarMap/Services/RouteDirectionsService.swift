@@ -73,18 +73,9 @@ final class RouteDirectionsService {
                     routes.append(contentsOf: alternates)
                 }
             }
-
-            if let fastest = routes.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) {
-                let offsets = await fetchOffsetEndpointRoutes(
-                    from: start,
-                    to: destination,
-                    preferences: preferences,
-                    reference: fastest
-                )
-                routes.append(contentsOf: offsets)
-            }
         }
 
+        routes = routes.filter { routeMatchesEndpoints($0, start: start.coordinate, destination: destination.coordinate) }
         routes = deduplicatedRoutes(routes)
         guard !routes.isEmpty else {
             throw RouteDirectionsError.noRoute
@@ -133,52 +124,24 @@ final class RouteDirectionsService {
         return routes
     }
 
-    /// Request real MapKit routes from points offset perpendicular to the fastest path endpoints.
-    private func fetchOffsetEndpointRoutes(
-        from start: MapPlace,
-        to destination: MapPlace,
-        preferences: RoutePreferences,
-        reference: MKRoute
-    ) async -> [MKRoute] {
-        guard reference.polyline.pointCount >= 2 else { return [] }
+    private func routeMatchesEndpoints(
+        _ route: MKRoute,
+        start: CLLocationCoordinate2D,
+        destination: CLLocationCoordinate2D
+    ) -> Bool {
+        guard route.polyline.pointCount >= 2 else { return false }
 
-        let points = reference.polyline.points()
+        let points = route.polyline.points()
         let routeStart = points[0].coordinate
-        let routeEnd = points[reference.polyline.pointCount - 1].coordinate
-        let startBearing = bearingDegrees(from: routeStart, to: points[1].coordinate)
-        let endBearing = bearingDegrees(
-            from: points[reference.polyline.pointCount - 2].coordinate,
-            to: routeEnd
-        )
+        let routeEnd = points[route.polyline.pointCount - 1].coordinate
+        let maxGap: CLLocationDistance = 600
 
-        let offsetsMeters: [CLLocationDistance] = [2_500, 5_000, 8_000]
-        let bearings: [Double] = [90, -90]
-        var routes: [MKRoute] = []
-        let maxDetourTime = reference.expectedTravelTime * 1.8
+        let startGap = CLLocation(latitude: routeStart.latitude, longitude: routeStart.longitude)
+            .distance(from: CLLocation(latitude: start.latitude, longitude: start.longitude))
+        let endGap = CLLocation(latitude: routeEnd.latitude, longitude: routeEnd.longitude)
+            .distance(from: CLLocation(latitude: destination.latitude, longitude: destination.longitude))
 
-        for meters in offsetsMeters {
-            for delta in bearings {
-                let offsetStart = offsetCoordinate(routeStart, bearingDegrees: startBearing + delta, meters: meters)
-                let offsetEnd = offsetCoordinate(routeEnd, bearingDegrees: endBearing + delta, meters: meters)
-
-                let viaStart = MapPlace(title: start.title, subtitle: start.subtitle, coordinate: offsetStart)
-                let viaEnd = MapPlace(title: destination.title, subtitle: destination.subtitle, coordinate: offsetEnd)
-
-                if let startRoutes = try? await fetchRoutes(from: viaStart, to: destination, preferences: preferences),
-                   let best = startRoutes.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }),
-                   best.expectedTravelTime <= maxDetourTime {
-                    routes.append(best)
-                }
-
-                if let endRoutes = try? await fetchRoutes(from: start, to: viaEnd, preferences: preferences),
-                   let best = endRoutes.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }),
-                   best.expectedTravelTime <= maxDetourTime {
-                    routes.append(best)
-                }
-            }
-        }
-
-        return routes
+        return startGap <= maxGap && endGap <= maxGap
     }
 
     private func deduplicatedRoutes(_ routes: [MKRoute]) -> [MKRoute] {
@@ -193,39 +156,6 @@ final class RouteDirectionsService {
             }
         }
         return unique
-    }
-
-    private func bearingDegrees(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D) -> Double {
-        let lat1 = start.latitude * .pi / 180
-        let lat2 = end.latitude * .pi / 180
-        let deltaLon = (end.longitude - start.longitude) * .pi / 180
-        let y = sin(deltaLon) * cos(lat2)
-        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(deltaLon)
-        let bearing = atan2(y, x) * 180 / .pi
-        return bearing >= 0 ? bearing : bearing + 360
-    }
-
-    private func offsetCoordinate(
-        _ coordinate: CLLocationCoordinate2D,
-        bearingDegrees: Double,
-        meters: CLLocationDistance
-    ) -> CLLocationCoordinate2D {
-        let earthRadius = 6_371_000.0
-        let bearing = bearingDegrees * .pi / 180
-        let lat1 = coordinate.latitude * .pi / 180
-        let lon1 = coordinate.longitude * .pi / 180
-        let angularDistance = meters / earthRadius
-
-        let lat2 = asin(
-            sin(lat1) * cos(angularDistance)
-                + cos(lat1) * sin(angularDistance) * cos(bearing)
-        )
-        let lon2 = lon1 + atan2(
-            sin(bearing) * sin(angularDistance) * cos(lat1),
-            cos(angularDistance) - sin(lat1) * sin(lat2)
-        )
-
-        return CLLocationCoordinate2D(latitude: lat2 * 180 / .pi, longitude: lon2 * 180 / .pi)
     }
 
     private func mapItem(for place: MapPlace) -> MKMapItem {
