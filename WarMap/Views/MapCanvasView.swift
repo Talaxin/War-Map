@@ -26,12 +26,14 @@ struct MapCanvasView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
-        mapView.isRotateEnabled = false
+        mapView.isRotateEnabled = true
+        mapView.isZoomEnabled = true
+        mapView.isScrollEnabled = true
         mapView.showsUserLocation = true
         mapView.showsCompass = true
         mapView.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 140, right: 12)
         mapView.pointOfInterestFilter = .includingAll
-        context.coordinator.installPanObserver(on: mapView)
+        context.coordinator.installGestureObservers(on: mapView)
         return mapView
     }
 
@@ -107,7 +109,6 @@ struct MapCanvasView: UIViewRepresentable {
         let trackingModeChanged = trackingMode != context.coordinator.lastTrackingMode
 
         if followUser {
-            mapView.isRotateEnabled = trackingMode == .followWithHeading
             let mode: MKUserTrackingMode = trackingMode == .followWithHeading ? .followWithHeading : .follow
             if mapView.userTrackingMode != mode || followChanged || trackingModeChanged {
                 context.coordinator.setProgrammaticChange(true)
@@ -115,7 +116,7 @@ struct MapCanvasView: UIViewRepresentable {
                 context.coordinator.setProgrammaticChange(false)
             }
         } else {
-            mapView.isRotateEnabled = false
+            mapView.isRotateEnabled = true
             if mapView.userTrackingMode != .none {
                 context.coordinator.setProgrammaticChange(true)
                 mapView.setUserTrackingMode(.none, animated: false)
@@ -186,6 +187,8 @@ struct MapCanvasView: UIViewRepresentable {
         private var isProgrammaticRegionChange = false
         private var programmaticChangeDepth = 0
         private weak var observedPanGesture: UIPanGestureRecognizer?
+        private weak var observedPinchGesture: UIPinchGestureRecognizer?
+        private weak var observedRotationGesture: UIRotationGestureRecognizer?
 
         init(parent: MapCanvasView) {
             self.parent = parent
@@ -206,17 +209,27 @@ struct MapCanvasView: UIViewRepresentable {
             }
         }
 
-        func installPanObserver(on mapView: MKMapView) {
+        func installGestureObservers(on mapView: MKMapView) {
             guard observedPanGesture == nil else { return }
-            for case let pan as UIPanGestureRecognizer in mapView.gestureRecognizers ?? [] {
-                pan.addTarget(self, action: #selector(handlePan(_:)))
-                observedPanGesture = pan
-                break
+            for gesture in mapView.gestureRecognizers ?? [] {
+                switch gesture {
+                case let pan as UIPanGestureRecognizer:
+                    pan.addTarget(self, action: #selector(handleMapGesture(_:)))
+                    observedPanGesture = pan
+                case let pinch as UIPinchGestureRecognizer:
+                    pinch.addTarget(self, action: #selector(handleMapGesture(_:)))
+                    observedPinchGesture = pinch
+                case let rotation as UIRotationGestureRecognizer:
+                    rotation.addTarget(self, action: #selector(handleMapGesture(_:)))
+                    observedRotationGesture = rotation
+                default:
+                    break
+                }
             }
         }
 
-        @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-            guard gesture.state == .began, parent.followUser, !isProgrammaticRegionChange else { return }
+        @objc private func handleMapGesture(_ gesture: UIGestureRecognizer) {
+            guard gesture.state == .began, !isProgrammaticRegionChange else { return }
             parent.onUserInteraction()
         }
 
@@ -230,9 +243,9 @@ struct MapCanvasView: UIViewRepresentable {
             routeChanged: Bool = false,
             highlightChanged: Bool = false
         ) -> Bool {
-            if followChanged || routeChanged || highlightChanged { return true }
-            let key = idleViewportKey(for: parent)
-            return key != idleViewportKey
+            if routeChanged || highlightChanged { return true }
+            if followChanged && parent.followUser { return true }
+            return false
         }
 
         func recordIdleViewport(parent: MapCanvasView) {
@@ -324,8 +337,8 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            guard parent.followUser, !isProgrammaticRegionChange else { return }
-            if mapView.userTrackingMode == .none {
+            guard !isProgrammaticRegionChange else { return }
+            if parent.followUser, mapView.userTrackingMode == .none {
                 parent.onUserInteraction()
             }
         }

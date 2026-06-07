@@ -257,11 +257,48 @@ final class RoutePlannerViewModel: ObservableObject {
 
     func handleStartQueryChange() {
         if startUsesCurrentLocation { startUsesCurrentLocation = false }
+        if startQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            startPlace = nil
+            scheduleRouteCalculation()
+        }
         updateSearchQuery()
     }
 
     func handleDestinationQueryChange() {
+        if destinationQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            destinationPlace = nil
+            clearRoute()
+        }
         updateSearchQuery()
+    }
+
+    func clearStart() {
+        startUsesCurrentLocation = false
+        startQuery = ""
+        startPlace = nil
+        searchService.clear()
+        if focusedField == .start {
+            focusedField = nil
+        }
+        scheduleRouteCalculation()
+    }
+
+    func clearDestination() {
+        destinationQuery = ""
+        destinationPlace = nil
+        searchService.clear()
+        if focusedField == .destination {
+            focusedField = nil
+        }
+        clearRoute()
+    }
+
+    var canClearStart: Bool {
+        startUsesCurrentLocation || startPlace != nil || !startQuery.isEmpty
+    }
+
+    var canClearDestination: Bool {
+        destinationPlace != nil || !destinationQuery.isEmpty
     }
 
     func handleLocationUpdate() {

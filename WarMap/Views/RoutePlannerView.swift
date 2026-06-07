@@ -141,6 +141,21 @@ struct RoutePlannerView: View {
         .onChange(of: viewModel.focusedField) { newValue in
             focusedField = newValue
         }
+        .onChange(of: viewModel.locationManager.highlightedSegmentIndex) { index in
+            if index != nil {
+                viewModel.userDidInteractWithMap()
+            }
+        }
+    }
+
+    private func clearFieldButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Clear")
     }
 
     private var collapsedSearchBar: some View {
@@ -173,7 +188,12 @@ struct RoutePlannerView: View {
                     .frame(width: 10, height: 10)
                     .padding(.top, 6)
                 VStack(spacing: 0) {
-                    startFieldBlock
+                    HStack(spacing: 6) {
+                        startFieldBlock
+                        if viewModel.canClearStart {
+                            clearFieldButton(action: viewModel.clearStart)
+                        }
+                    }
                     if viewModel.focusedField == .start, !viewModel.searchCompletions.isEmpty {
                         suggestionsScroll
                     }
@@ -203,7 +223,12 @@ struct RoutePlannerView: View {
                     .frame(width: 10, height: 10)
                     .padding(.top, 6)
                 VStack(spacing: 0) {
-                    destinationFieldBlock
+                    HStack(spacing: 6) {
+                        destinationFieldBlock
+                        if viewModel.canClearDestination {
+                            clearFieldButton(action: viewModel.clearDestination)
+                        }
+                    }
                     if viewModel.focusedField == .destination, !viewModel.searchCompletions.isEmpty {
                         suggestionsScroll
                     }
