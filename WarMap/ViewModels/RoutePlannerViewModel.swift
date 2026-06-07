@@ -469,86 +469,90 @@ final class RoutePlannerViewModel: ObservableObject {
     }
 
     private func buildRouteOptions(from candidates: [MKRoute]) -> [RouteOption] {
-        guard let fastestRoute = candidates.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
+        guard let referenceRoute = candidates.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
             return []
         }
-
-        let baselineTime = fastestRoute.expectedTravelTime
 
         struct Scored {
             let route: MKRoute
             let newMeters: CLLocationDistance
-            let additionalTime: TimeInterval
 
             var id: String { RouteOption.fingerprint(route) }
         }
 
-        var scored: [Scored] = []
         var byID: [String: Scored] = [:]
         for route in candidates {
             let item = Scored(
                 route: route,
-                newMeters: locationManager.estimateNewDistanceMeters(along: route.polyline),
-                additionalTime: max(0, route.expectedTravelTime - baselineTime)
+                newMeters: locationManager.estimateNewDistanceMeters(along: route.polyline)
             )
             if let existing = byID[item.id] {
-                if item.additionalTime < existing.additionalTime {
+                if item.route.expectedTravelTime < existing.route.expectedTravelTime {
                     byID[item.id] = item
                 }
             } else {
                 byID[item.id] = item
             }
         }
-        scored = Array(byID.values)
+        let scored = Array(byID.values)
 
         let percent = max(0, min(100, settings.newRoadPercent))
         let slider = Double(percent) / 100.0
-        let minNew = scored.map(\.newMeters).min() ?? 0
-        let maxNew = scored.map(\.newMeters).max() ?? 0
-        let targetNew = minNew + slider * (maxNew - minNew)
+        let minNewRequired = slider * referenceRoute.distance
 
-        var picks: [Scored] = []
-
-        func appendUnique(_ candidate: Scored?) {
-            guard let candidate else { return }
-            guard !picks.contains(where: { $0.id == candidate.id }) else { return }
-            picks.append(candidate)
+        let qualifying = scored.filter { $0.newMeters >= minNewRequired - 1 }
+        let pool: [Scored]
+        if percent == 0 {
+            pool = scored
+        } else if qualifying.isEmpty {
+            pool = scored.sorted {
+                if abs($0.newMeters - $1.newMeters) > 1 { return $0.newMeters > $1.newMeters }
+                return $0.route.expectedTravelTime < $1.route.expectedTravelTime
+            }
+        } else {
+            pool = qualifying
         }
 
-        appendUnique(scored.min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }))
-        appendUnique(
-            scored.min(by: {
-                let lhsFit = abs($0.newMeters - targetNew)
-                let rhsFit = abs($1.newMeters - targetNew)
-                if abs(lhsFit - rhsFit) > 1 { return lhsFit < rhsFit }
-                return $0.additionalTime < $1.additionalTime
-            })
-        )
-        appendUnique(
-            scored.max(by: {
-                if abs($0.newMeters - $1.newMeters) > 1 { return $0.newMeters < $1.newMeters }
-                return $0.additionalTime < $1.additionalTime
-            })
-        )
+        guard let fastestQualifying = pool.min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) else {
+            return []
+        }
 
-        for item in scored.sorted(by: {
-            if abs($0.additionalTime - $1.additionalTime) > 1 {
-                return $0.additionalTime < $1.additionalTime
+        let baselineTime = fastestQualifying.route.expectedTravelTime
+        var picks: [Scored] = [fastestQualifying]
+
+        let alternates = pool
+            .filter { $0.id != fastestQualifying.id }
+            .sorted {
+                if abs($0.newMeters - $1.newMeters) > 1 { return $0.newMeters > $1.newMeters }
+                return $0.route.expectedTravelTime < $1.route.expectedTravelTime
             }
-            return $0.newMeters > $1.newMeters
-        }) {
-            appendUnique(item)
+
+        for item in alternates {
+            picks.append(item)
             if picks.count == 3 { break }
         }
 
+        if picks.count < 3 {
+            for item in pool.sorted(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) {
+                guard !picks.contains(where: { $0.id == item.id }) else { continue }
+                picks.append(item)
+                if picks.count == 3 { break }
+            }
+        }
+
         return picks
-            .sorted { $0.additionalTime < $1.additionalTime }
+            .sorted { lhs, rhs in
+                let lhsTime = lhs.route.expectedTravelTime
+                let rhsTime = rhs.route.expectedTravelTime
+                if abs(lhsTime - rhsTime) > 1 { return lhsTime < rhsTime }
+                return lhs.newMeters > rhs.newMeters
+            }
             .prefix(3)
             .map {
                 RouteOption(
                     id: $0.id,
                     route: $0.route,
-                    additionalTime: $0.additionalTime,
+                    additionalTime: max(0, $0.route.expectedTravelTime - baselineTime),
                     newRoadMeters: $0.newMeters
                 )
             }
@@ -562,29 +566,11 @@ final class RoutePlannerViewModel: ObservableObject {
         }
 
         let percent = max(0, min(100, settings.newRoadPercent))
-        guard percent > 0 else {
-            return options.first
+        if percent >= 100 {
+            return options.max(by: { $0.newRoadMeters < $1.newRoadMeters })
         }
 
-        guard let baseline = options.map(\.route).min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
-            return options.first
-        }
-
-        let minNew = options.map(\.newRoadMeters).min() ?? 0
-        let maxNew = options.map(\.newRoadMeters).max() ?? 0
-        let slider = Double(percent) / 100.0
-        let spectrumTarget = minNew + slider * (maxNew - minNew)
-        let absoluteTarget = slider * baseline.distance
-        let targetNew = min(max(spectrumTarget, absoluteTarget), maxNew)
-
-        return options.min(by: { lhs, rhs in
-            let lhsFit = abs(lhs.newRoadMeters - targetNew)
-            let rhsFit = abs(rhs.newRoadMeters - targetNew)
-            if abs(lhsFit - rhsFit) > 1 {
-                return lhsFit < rhsFit
-            }
-            return lhs.additionalTime < rhs.additionalTime
-        })
+        return options.min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime })
     }
 
     private func announceGuidanceIfNeeded() {

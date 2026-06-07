@@ -27,7 +27,8 @@ struct RouteOption: Identifiable, Equatable {
     func detailLabel(preferences: DistanceUnitPreferences) -> String {
         let time = DistanceFormatting.format(duration: route.expectedTravelTime)
         let distance = DistanceFormatting.format(distance: route.distance, preferences: preferences)
-        return "\(time) · \(distance)"
+        let newRoad = DistanceFormatting.format(distance: newRoadMeters, preferences: preferences)
+        return "\(time) · \(distance) · \(newRoad) new"
     }
 
     static func == (lhs: RouteOption, rhs: RouteOption) -> Bool {
