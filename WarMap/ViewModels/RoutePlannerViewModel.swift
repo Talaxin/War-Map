@@ -30,6 +30,7 @@ final class RoutePlannerViewModel: ObservableObject {
     @Published private(set) var guidance = NavigationGuidanceState()
     @Published var isSearchPanelExpanded = true
     @Published private(set) var northResetRevision = 0
+    @Published private(set) var userCenterRevision = 0
 
     let locationManager = LocationManager()
     let settings: AppSettings
@@ -40,6 +41,7 @@ final class RoutePlannerViewModel: ObservableObject {
     private let voiceGuidance: VoiceGuidanceService
     private var routeCalculationTask: Task<Void, Never>?
     private var settingsCancellable: AnyCancellable?
+    private var didCenterOnLaunch = false
 
     var searchCompletions: [MKLocalSearchCompletion] {
         searchService.completions
@@ -142,11 +144,12 @@ final class RoutePlannerViewModel: ObservableObject {
         locationManager.requestAccessIfNeeded()
         locationManager.suspendTravelTracking()
         refreshStartFromCurrentLocation()
-        if locationManager.isAuthorized {
-            followUserOnMap = true
-            mapTrackingMode = .follow
-        }
+        centerOnUserAtLaunch()
         syncMapTrackingHardware()
+    }
+
+    func handleAuthorizationChange() {
+        centerOnUserAtLaunch()
     }
 
     func focus(_ field: RouteField) {
@@ -303,6 +306,7 @@ final class RoutePlannerViewModel: ObservableObject {
     }
 
     func handleLocationUpdate() {
+        centerOnUserAtLaunch()
         if startUsesCurrentLocation {
             refreshStartFromCurrentLocation()
         }
@@ -359,6 +363,18 @@ final class RoutePlannerViewModel: ObservableObject {
 
     func resetMapNorth() {
         northResetRevision += 1
+    }
+
+    private func centerOnUserAtLaunch() {
+        guard !didCenterOnLaunch else { return }
+        guard locationManager.isAuthorized, locationManager.currentLocation != nil else { return }
+        guard !isNavigating, route == nil else { return }
+
+        didCenterOnLaunch = true
+        followUserOnMap = true
+        mapTrackingMode = .follow
+        syncMapTrackingHardware()
+        userCenterRevision += 1
     }
 
     func setDestination(from saved: SavedLocation) {

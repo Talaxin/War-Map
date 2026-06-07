@@ -4,6 +4,7 @@ import SwiftUI
 struct RoutePlannerView: View {
     @StateObject private var viewModel: RoutePlannerViewModel
     @State private var showSettings = false
+    @State private var showSavedDestinations = false
     @FocusState private var focusedField: RouteField?
 
     init(settings: AppSettings) {
@@ -28,22 +29,36 @@ struct RoutePlannerView: View {
                 vehicleType: viewModel.settings.vehicleType,
                 trackedPathRevision: viewModel.locationManager.trackedPathRevision,
                 northResetRevision: viewModel.northResetRevision,
+                userCenterRevision: viewModel.userCenterRevision,
                 onUserInteraction: viewModel.userDidInteractWithMap
             )
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 8) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title3)
-                            .foregroundStyle(.primary)
-                            .padding(10)
-                            .background(.regularMaterial, in: Circle())
+                    VStack(spacing: 8) {
+                        Button {
+                            showSettings = true
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.title3)
+                                .foregroundStyle(.primary)
+                                .padding(10)
+                                .background(.regularMaterial, in: Circle())
+                        }
+                        .accessibilityLabel("Settings")
+
+                        Button {
+                            showSavedDestinations = true
+                        } label: {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.title3)
+                                .foregroundStyle(.primary)
+                                .padding(10)
+                                .background(.regularMaterial, in: Circle())
+                        }
+                        .accessibilityLabel("Saved destinations")
                     }
-                    .accessibilityLabel("Settings")
 
                     Group {
                         if viewModel.isSearchPanelExpanded {
@@ -133,16 +148,25 @@ struct RoutePlannerView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView(
                 settings: viewModel.settings,
-                locationManager: viewModel.locationManager,
-                currentDestination: viewModel.currentDestinationForSaving,
-                onSelectSavedDestination: viewModel.setDestination(from:),
-                onSaveCurrentDestination: viewModel.saveCurrentDestination(as:)
+                locationManager: viewModel.locationManager
             )
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showSavedDestinations) {
+            SavedDestinationsMenuView(
+                settings: viewModel.settings,
+                currentDestination: viewModel.currentDestinationForSaving,
+                onSelect: viewModel.setDestination(from:),
+                onSaveCurrent: viewModel.saveCurrentDestination(as:)
+            )
+            .presentationDetents([.medium, .large])
         }
         .onAppear { viewModel.onAppear() }
         .onReceive(viewModel.locationManager.$currentLocation) { _ in
             viewModel.handleLocationUpdate()
+        }
+        .onReceive(viewModel.locationManager.$authorizationStatus) { _ in
+            viewModel.handleAuthorizationChange()
         }
         .onChange(of: focusedField) { newValue in
             viewModel.focusedField = newValue

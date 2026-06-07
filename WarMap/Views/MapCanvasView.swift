@@ -18,6 +18,7 @@ struct MapCanvasView: UIViewRepresentable {
     let vehicleType: VehicleType
     let trackedPathRevision: Int
     var northResetRevision: Int = 0
+    var userCenterRevision: Int = 0
     var onUserInteraction: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
@@ -119,10 +120,17 @@ struct MapCanvasView: UIViewRepresentable {
 
         let followChanged = followUser != context.coordinator.lastFollowUser
         let trackingModeChanged = trackingMode != context.coordinator.lastTrackingMode
+        let centerRevisionChanged = userCenterRevision != context.coordinator.lastUserCenterRevision
+        if centerRevisionChanged {
+            context.coordinator.lastUserCenterRevision = userCenterRevision
+        }
 
         if followUser {
             let mode: MKUserTrackingMode = trackingMode == .followWithHeading ? .followWithHeading : .follow
-            if mapView.userTrackingMode != mode || followChanged || trackingModeChanged {
+            if mapView.userTrackingMode != mode
+                || followChanged
+                || trackingModeChanged
+                || centerRevisionChanged {
                 context.coordinator.setProgrammaticChange(true)
                 mapView.setUserTrackingMode(mode, animated: followChanged || trackingModeChanged)
                 context.coordinator.setProgrammaticChange(false)
@@ -196,6 +204,7 @@ struct MapCanvasView: UIViewRepresentable {
         var lastFollowUser = true
         var lastTrackingMode: MapTrackingMode = .follow
         var lastNorthResetRevision = -1
+        var lastUserCenterRevision = -1
         var idleViewportKey: String?
         private var isProgrammaticRegionChange = false
         private var programmaticChangeDepth = 0
