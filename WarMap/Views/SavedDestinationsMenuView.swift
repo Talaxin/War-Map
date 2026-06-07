@@ -3,14 +3,10 @@ import SwiftUI
 
 struct SavedDestinationsMenuView: View {
     @ObservedObject var settings: AppSettings
-    let currentDestination: MapPlace?
     let onSelect: (SavedLocation) -> Void
-    let onSaveCurrent: (String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var showAddLocation = false
-    @State private var showSaveCurrent = false
-    @State private var saveCurrentName = ""
 
     var body: some View {
         NavigationStack {
@@ -67,7 +63,7 @@ struct SavedDestinationsMenuView: View {
             .navigationTitle("Destinations")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -78,32 +74,9 @@ struct SavedDestinationsMenuView: View {
                     }
                     .accessibilityLabel("Add destination")
                 }
-                if currentDestination != nil {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Save current") {
-                            showSaveCurrent = true
-                        }
-                    }
-                }
             }
             .sheet(isPresented: $showAddLocation) {
                 AddSavedDestinationView(settings: settings)
-            }
-            .alert("Save current destination", isPresented: $showSaveCurrent) {
-                TextField("Name", text: $saveCurrentName)
-                Button("Save") {
-                    let trimmed = saveCurrentName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    onSaveCurrent(trimmed)
-                    saveCurrentName = ""
-                }
-                Button("Cancel", role: .cancel) {
-                    saveCurrentName = ""
-                }
-            } message: {
-                if let currentDestination {
-                    Text("Save “\(currentDestination.title)” as a favorite destination.")
-                }
             }
         }
     }

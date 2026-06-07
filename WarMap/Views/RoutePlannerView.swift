@@ -119,9 +119,7 @@ struct RoutePlannerView: View {
         .sheet(isPresented: $showSavedDestinations) {
             SavedDestinationsMenuView(
                 settings: viewModel.settings,
-                currentDestination: viewModel.currentDestinationForSaving,
-                onSelect: viewModel.setDestination(from:),
-                onSaveCurrent: viewModel.saveCurrentDestination(as:)
+                onSelect: viewModel.setDestination(from:)
             )
             .presentationDetents([.medium, .large])
         }
@@ -142,6 +140,11 @@ struct RoutePlannerView: View {
         }
         .onChange(of: viewModel.focusedField) { newValue in
             focusedField = newValue
+        }
+        .onChange(of: viewModel.destinationPlace) { place in
+            if place != nil {
+                showSavedDestinations = false
+            }
         }
         .onChange(of: viewModel.locationManager.highlightedSegmentIndex) { index in
             if index != nil {
@@ -300,7 +303,7 @@ struct RoutePlannerView: View {
                     }
                     .frame(height: searchRowHeight)
                     if viewModel.focusedField == .start, !viewModel.searchCompletions.isEmpty {
-                        suggestionsScroll
+                        suggestionsScroll(field: .start)
                     }
                 }
                 searchRowActionButton(
@@ -327,7 +330,7 @@ struct RoutePlannerView: View {
                     }
                     .frame(height: searchRowHeight)
                     if viewModel.focusedField == .destination, !viewModel.searchCompletions.isEmpty {
-                        suggestionsScroll
+                        suggestionsScroll(field: .destination)
                     }
                 }
                 searchRowActionButton(
@@ -376,12 +379,12 @@ struct RoutePlannerView: View {
             .frame(maxWidth: .infinity, minHeight: searchRowHeight, alignment: .leading)
     }
 
-    private var suggestionsScroll: some View {
+    private func suggestionsScroll(field: RouteField) -> some View {
         ScrollView {
             VStack(spacing: 0) {
                 ForEach(Array(viewModel.searchCompletions.enumerated()), id: \.offset) { _, completion in
                     Button {
-                        Task { await viewModel.selectCompletion(completion) }
+                        Task { await viewModel.selectCompletion(completion, field: field) }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(completion.title)
@@ -397,6 +400,7 @@ struct RoutePlannerView: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 8)
                     }
+                    .buttonStyle(.plain)
                     if completion.title != viewModel.searchCompletions.last?.title {
                         Divider()
                     }

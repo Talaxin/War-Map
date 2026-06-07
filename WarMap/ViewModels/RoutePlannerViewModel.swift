@@ -226,30 +226,42 @@ final class RoutePlannerViewModel: ObservableObject {
         )
     }
 
-    func selectCompletion(_ completion: MKLocalSearchCompletion) async {
+    func selectCompletion(_ completion: MKLocalSearchCompletion, field: RouteField) async {
+        searchService.clear()
+        focusedField = nil
+        KeyboardDismiss.resign()
+
+        switch field {
+        case .start:
+            startUsesCurrentLocation = false
+            startQuery = completion.title
+        case .destination:
+            destinationQuery = completion.title
+        }
+
         isResolvingSearch = true
         searchError = nil
         defer { isResolvingSearch = false }
 
         do {
             let place = try await searchService.resolve(completion)
-            switch focusedField {
+            switch field {
             case .start:
                 startPlace = place
-                startUsesCurrentLocation = false
                 startQuery = place.title
             case .destination:
                 destinationPlace = place
                 destinationQuery = place.title
-            case .none:
-                break
             }
-            searchService.clear()
-            focusedField = nil
-            KeyboardDismiss.resign()
             scheduleRouteCalculation()
         } catch {
             searchError = error.localizedDescription
+            switch field {
+            case .start:
+                startPlace = nil
+            case .destination:
+                destinationPlace = nil
+            }
         }
     }
 
