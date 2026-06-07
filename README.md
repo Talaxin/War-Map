@@ -20,6 +20,8 @@ https://raw.githubusercontent.com/Talaxin/War-Map/main/repo.json
 
 Then install **War Map** from the source listing.
 
+If the source tile or app list spins forever, delete the source and add it again — Feather caches the old `repo.json` and icon URL locally. The IPA always downloads from GitHub (`github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa`), not jsDelivr, so the file matches the size in `repo.json`.
+
 ## Build the IPA (macOS + Xcode)
 
 1. Open `WarMap.xcodeproj` in Xcode.

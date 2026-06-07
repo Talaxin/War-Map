@@ -18,9 +18,10 @@ PBXPROJ = ROOT / "WarMap.xcodeproj/project.pbxproj"
 REPO_JSON = ROOT / "repo.json"
 REPO_ICON_PNG = ROOT / "warmap.png"
 REPO_ICON_JPEG = ROOT / "icon.jpeg"
-# WuXu source uses https://i.imgur.com/g17kMl9.jpeg — JPEG on a CDN, not raw GitHub PNG.
-SOURCE_ICON_URL = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/icon.jpeg"
-APP_ICON_URL = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/icon.jpeg"
+# GitHub raw mirrors the committed repo assets. Avoid jsDelivr @main for IPA/icon —
+# its CDN can serve stale binaries for days while repo.json on GitHub updates immediately.
+SOURCE_ICON_URL = "https://raw.githubusercontent.com/Talaxin/War-Map/main/icon.jpeg"
+APP_ICON_URL = SOURCE_ICON_URL
 ICON_BG = (12, 10, 18)
 JPEG_SIZE = 1080
 
@@ -74,7 +75,7 @@ def write_jpeg(path: Path, image: Image.Image) -> None:
 
 
 def update_repo_json() -> None:
-    download_url = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/build/WarMap.ipa"
+    download_url = "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa"
     repo = json.loads(REPO_JSON.read_text(encoding="utf-8"))
     repo["iconURL"] = SOURCE_ICON_URL
     repo["tintColor"] = "007AFF"

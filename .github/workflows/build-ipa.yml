@@ -67,6 +67,9 @@ jobs:
           .ci-venv/bin/python release_esign.py \
             --description "War Map v${{ steps.version.outputs.value }}."
 
+      - name: Validate Feather repo metadata
+        run: .ci-venv/bin/python scripts/validate_feather_repo.py --skip-remote
+
       - name: Publish IPA and repo.json to main
         run: |
           git config user.name "github-actions[bot]"

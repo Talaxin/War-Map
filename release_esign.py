@@ -17,8 +17,12 @@ from pathlib import Path
 from typing import Any
 
 BUNDLE_ID = "com.talaxin.warmap"
-SOURCE_ICON_URL = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/icon.jpeg"
-DOWNLOAD_URL = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/build/WarMap.ipa"
+# Match Talaxin/Noir: GitHub raw for repo assets. Do not use jsDelivr @main for IPA —
+# jsDelivr caches binaries for days and serves stale builds while repo.json updates immediately.
+SOURCE_ICON_URL = "https://raw.githubusercontent.com/Talaxin/War-Map/main/icon.jpeg"
+APP_ICON_URL = SOURCE_ICON_URL
+DOWNLOAD_URL = "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa"
+MIN_OS_VERSION = "16.0"
 APP_DESCRIPTION = (
     "Plan routes, pick from alternate paths, and navigate with turn-by-turn guidance. "
     "Remembers roads you have driven."
@@ -65,6 +69,7 @@ def utc_now_z() -> str:
 def normalize_repo(repo: dict[str, Any], *, version: str, description: str, ipa_size: int, now_z: str) -> None:
     repo["iconURL"] = SOURCE_ICON_URL
     repo["tintColor"] = "007AFF"
+    repo["news"] = repo.get("news") or []
 
     apps = repo.get("apps", [])
     app = next((a for a in apps if a.get("bundleIdentifier") == BUNDLE_ID), None)
@@ -72,7 +77,7 @@ def normalize_repo(repo: dict[str, Any], *, version: str, description: str, ipa_
         raise ValueError(f"No app entry for {BUNDLE_ID!r}")
 
     app["downloadURL"] = DOWNLOAD_URL
-    app["iconURL"] = SOURCE_ICON_URL
+    app["iconURL"] = APP_ICON_URL
     app["tintColor"] = "007AFF"
     app["size"] = ipa_size
     app["beta"] = False
@@ -95,6 +100,7 @@ def normalize_repo(repo: dict[str, Any], *, version: str, description: str, ipa_
             "localizedDescription": description,
             "downloadURL": DOWNLOAD_URL,
             "size": ipa_size,
+            "minOSVersion": MIN_OS_VERSION,
         }
     ]
     app["version"] = version
