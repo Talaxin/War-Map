@@ -135,12 +135,25 @@ final class AppSettings: ObservableObject {
     @Published var allowTollRoads: Bool {
         didSet { persist(allowTollRoads, for: .allowTollRoads) }
     }
+    @Published var distanceUnitSystem: DistanceUnitSystem {
+        didSet { persist(distanceUnitSystem.rawValue, for: .distanceUnitSystem) }
+    }
+    @Published var customShortDistanceUnit: ShortDistanceUnit {
+        didSet { persist(customShortDistanceUnit.rawValue, for: .customShortDistanceUnit) }
+    }
+    @Published var customLongDistanceUnit: LongDistanceUnit {
+        didSet { persist(customLongDistanceUnit.rawValue, for: .customLongDistanceUnit) }
+    }
 
     let voiceOptions: [VoiceOption]
+    let savedLocations = SavedLocationsStore()
+
+    private var savedLocationsCancellable: AnyCancellable?
 
     private enum Key: String {
         case routeColor, trackedColor, vehicleType, voiceEnabled, voiceID, newRoadPercent
         case allowHighways, allowFerries, allowCrossBorder, allowTollRoads
+        case distanceUnitSystem, customShortDistanceUnit, customLongDistanceUnit
     }
 
     init() {
@@ -155,7 +168,26 @@ final class AppSettings: ObservableObject {
         allowFerries = defaults.object(forKey: Key.allowFerries.rawValue) as? Bool ?? true
         allowCrossBorder = defaults.object(forKey: Key.allowCrossBorder.rawValue) as? Bool ?? true
         allowTollRoads = defaults.object(forKey: Key.allowTollRoads.rawValue) as? Bool ?? true
+        distanceUnitSystem = DistanceUnitSystem(
+            rawValue: defaults.string(forKey: Key.distanceUnitSystem.rawValue) ?? ""
+        ) ?? DistanceUnitPreferences.default.system
+        customShortDistanceUnit = ShortDistanceUnit(
+            rawValue: defaults.string(forKey: Key.customShortDistanceUnit.rawValue) ?? ""
+        ) ?? DistanceUnitPreferences.default.shortUnit
+        customLongDistanceUnit = LongDistanceUnit(
+            rawValue: defaults.string(forKey: Key.customLongDistanceUnit.rawValue) ?? ""
+        ) ?? DistanceUnitPreferences.default.longUnit
         voiceOptions = VoiceOption.loadEnglishVoices()
+        savedLocationsCancellable = savedLocations.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+    }
+
+    var distanceUnitPreferences: DistanceUnitPreferences {
+        DistanceUnitPreferences(
+            system: distanceUnitSystem,
+            shortUnit: customShortDistanceUnit,
+            longUnit: customLongDistanceUnit
+        )
     }
 
     var routePreferences: RoutePreferences {

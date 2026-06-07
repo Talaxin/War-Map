@@ -3,27 +3,38 @@ import Foundation
 
 enum DistanceFormatting {
     private static let formatter: MeasurementFormatter = {
-        let f = MeasurementFormatter()
-        f.unitOptions = .naturalScale
-        f.unitStyle = .short
-        f.numberFormatter.maximumFractionDigits = 0
-        return f
+        let formatter = MeasurementFormatter()
+        formatter.unitOptions = .providedUnit
+        formatter.unitStyle = .short
+        formatter.numberFormatter.maximumFractionDigits = 0
+        return formatter
     }()
 
-    static func format(distance: CLLocationDistance) -> String {
+    static func format(distance: CLLocationDistance, preferences: DistanceUnitPreferences) -> String {
         let meters = Measurement(value: distance, unit: UnitLength.meters)
-        let locale = Locale.current
-        if locale.usesMetricSystem {
-            if distance < 1000 {
-                return formatter.string(from: meters.converted(to: .meters))
-            }
-            return formatter.string(from: meters.converted(to: .kilometers))
+        let shortThreshold: CLLocationDistance
+        let shortUnit: UnitLength
+        let longUnit: UnitLength
+
+        switch preferences.system {
+        case .metric:
+            shortThreshold = 1000
+            shortUnit = .meters
+            longUnit = .kilometers
+        case .imperial:
+            shortThreshold = 1609
+            shortUnit = .feet
+            longUnit = .miles
+        case .custom:
+            shortUnit = preferences.shortUnit == .meters ? .meters : .feet
+            longUnit = preferences.longUnit == .kilometers ? .kilometers : .miles
+            shortThreshold = preferences.longUnit == .kilometers ? 1000 : 1609
         }
-        let feet = meters.converted(to: .feet)
-        if distance < 1609 {
-            return formatter.string(from: feet)
+
+        if distance < shortThreshold {
+            return formatter.string(from: meters.converted(to: shortUnit))
         }
-        return formatter.string(from: meters.converted(to: .miles))
+        return formatter.string(from: meters.converted(to: longUnit))
     }
 
     static func format(duration: TimeInterval) -> String {

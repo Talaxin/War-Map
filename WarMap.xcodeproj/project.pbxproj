@@ -28,6 +28,10 @@
 		A100000100000000000025 /* RouteOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000025 /* RouteOption.swift */; };
 		A100000100000000000026 /* RouteOptionsPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000026 /* RouteOptionsPickerView.swift */; };
 		A100000100000000000027 /* DrivenPathSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000027 /* DrivenPathSummary.swift */; };
+		A100000100000000000028 /* DistanceUnits.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000028 /* DistanceUnits.swift */; };
+		A100000100000000000029 /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000029 /* SavedLocation.swift */; };
+		A100000100000000000030 /* MapPinAnnotation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000030 /* MapPinAnnotation.swift */; };
+		A100000100000000000031 /* SavedLocationsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000200000000000031 /* SavedLocationsStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +57,10 @@
 		A100000200000000000025 /* RouteOption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOption.swift; sourceTree = "<group>"; };
 		A100000200000000000026 /* RouteOptionsPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteOptionsPickerView.swift; sourceTree = "<group>"; };
 		A100000200000000000027 /* DrivenPathSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrivenPathSummary.swift; sourceTree = "<group>"; };
+		A100000200000000000028 /* DistanceUnits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistanceUnits.swift; sourceTree = "<group>"; };
+		A100000200000000000029 /* SavedLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocation.swift; sourceTree = "<group>"; };
+		A100000200000000000030 /* MapPinAnnotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPinAnnotation.swift; sourceTree = "<group>"; };
+		A100000200000000000031 /* SavedLocationsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationsStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -105,6 +113,9 @@
 				A100000200000000000024 /* MapTrackingMode.swift */,
 				A100000200000000000025 /* RouteOption.swift */,
 				A100000200000000000027 /* DrivenPathSummary.swift */,
+				A100000200000000000028 /* DistanceUnits.swift */,
+				A100000200000000000029 /* SavedLocation.swift */,
+				A100000200000000000030 /* MapPinAnnotation.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -117,6 +128,7 @@
 				A100000200000000000018 /* VoiceGuidanceService.swift */,
 				A100000200000000000017 /* NavigationGuidanceEngine.swift */,
 				A100000200000000000016 /* RouteDirectionsService.swift */,
+				A100000200000000000031 /* SavedLocationsStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -239,6 +251,10 @@
 				A100000100000000000025 /* RouteOption.swift in Sources */,
 				A100000100000000000026 /* RouteOptionsPickerView.swift in Sources */,
 				A100000100000000000027 /* DrivenPathSummary.swift in Sources */,
+				A100000100000000000028 /* DistanceUnits.swift in Sources */,
+				A100000100000000000029 /* SavedLocation.swift in Sources */,
+				A100000100000000000030 /* MapPinAnnotation.swift in Sources */,
+				A100000100000000000031 /* SavedLocationsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -294,7 +310,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 0.3.19;
+				CURRENT_PROJECT_VERSION = 0.3.20;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -308,7 +324,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.19;
+				MARKETING_VERSION = 0.3.20;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -325,7 +341,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 0.3.19;
+				CURRENT_PROJECT_VERSION = 0.3.20;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "War Map";
@@ -339,7 +355,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.19;
+				MARKETING_VERSION = 0.3.20;
 				PRODUCT_BUNDLE_IDENTIFIER = com.talaxin.warmap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

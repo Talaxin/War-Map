@@ -17,6 +17,7 @@ struct MapCanvasView: UIViewRepresentable {
     let highlightedTrackSegmentIndex: Int?
     let vehicleType: VehicleType
     let trackedPathRevision: Int
+    var northResetRevision: Int = 0
     var onUserInteraction: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
@@ -30,7 +31,7 @@ struct MapCanvasView: UIViewRepresentable {
         mapView.isZoomEnabled = true
         mapView.isScrollEnabled = true
         mapView.showsUserLocation = true
-        mapView.showsCompass = true
+        mapView.showsCompass = false
         mapView.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 140, right: 12)
         mapView.pointOfInterestFilter = .includingAll
         context.coordinator.installGestureObservers(on: mapView)
@@ -91,18 +92,29 @@ struct MapCanvasView: UIViewRepresentable {
 
         mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
         if let start, showsStartPin, !isNavigating {
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = Self.routeEndpoint(for: route, atStart: true) ?? start.coordinate
-            annotation.title = "start"
-            annotation.subtitle = start.title
+            let coordinate = Self.routeEndpoint(for: route, atStart: true) ?? start.coordinate
+            let annotation = MapPinAnnotation(
+                role: .start,
+                placeName: start.title,
+                coordinate: coordinate
+            )
             mapView.addAnnotation(annotation)
         }
         if let destination {
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = Self.routeEndpoint(for: route, atStart: false) ?? destination.coordinate
-            annotation.title = "destination"
-            annotation.subtitle = destination.title
+            let coordinate = Self.routeEndpoint(for: route, atStart: false) ?? destination.coordinate
+            let annotation = MapPinAnnotation(
+                role: .destination,
+                placeName: destination.title,
+                coordinate: coordinate
+            )
             mapView.addAnnotation(annotation)
+        }
+
+        if northResetRevision != context.coordinator.lastNorthResetRevision {
+            context.coordinator.lastNorthResetRevision = northResetRevision
+            let camera = mapView.camera.copy() as! MKMapCamera
+            camera.heading = 0
+            mapView.setCamera(camera, animated: true)
         }
 
         let followChanged = followUser != context.coordinator.lastFollowUser
@@ -183,6 +195,7 @@ struct MapCanvasView: UIViewRepresentable {
         var lastHighlightedTrackSegmentIndex: Int?
         var lastFollowUser = true
         var lastTrackingMode: MapTrackingMode = .follow
+        var lastNorthResetRevision = -1
         var idleViewportKey: String?
         private var isProgrammaticRegionChange = false
         private var programmaticChangeDepth = 0
@@ -284,22 +297,20 @@ struct MapCanvasView: UIViewRepresentable {
                 return view
             }
 
-            guard let point = annotation as? MKPointAnnotation else { return nil }
+            guard let pin = annotation as? MapPinAnnotation else { return nil }
 
             let identifier: String
             let color: UIColor
             let glyphName: String
-            switch point.title {
-            case "start":
+            switch pin.role {
+            case .start:
                 identifier = "StartPin"
                 color = .systemBlue
                 glyphName = "location.fill"
-            case "destination":
+            case .destination:
                 identifier = "DestinationPin"
                 color = .systemRed
                 glyphName = "mappin"
-            default:
-                return nil
             }
 
             let marker = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
@@ -309,6 +320,7 @@ struct MapCanvasView: UIViewRepresentable {
             marker.markerTintColor = color
             marker.glyphTintColor = .white
             marker.glyphImage = UIImage(systemName: glyphName)
+            marker.titleVisibility = .visible
             marker.displayPriority = .required
             return marker
         }

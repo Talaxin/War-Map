@@ -29,6 +29,7 @@ final class RoutePlannerViewModel: ObservableObject {
     @Published private(set) var mapTrackingMode: MapTrackingMode = .follow
     @Published private(set) var guidance = NavigationGuidanceState()
     @Published var isSearchPanelExpanded = true
+    @Published private(set) var northResetRevision = 0
 
     let locationManager = LocationManager()
     let settings: AppSettings
@@ -355,6 +356,31 @@ final class RoutePlannerViewModel: ObservableObject {
         followUserOnMap = false
         syncMapTrackingHardware()
     }
+
+    func resetMapNorth() {
+        northResetRevision += 1
+    }
+
+    func setDestination(from saved: SavedLocation) {
+        let place = MapPlace(
+            title: saved.name,
+            subtitle: saved.detail,
+            coordinate: saved.mapPlace.coordinate
+        )
+        destinationPlace = place
+        destinationQuery = saved.name
+        searchService.clear()
+        focusedField = nil
+        isSearchPanelExpanded = true
+        scheduleRouteCalculation()
+    }
+
+    func saveCurrentDestination(as name: String) {
+        guard let destinationPlace else { return }
+        settings.savedLocations.add(name: name, place: destinationPlace)
+    }
+
+    var currentDestinationForSaving: MapPlace? { destinationPlace }
 
     func selectRouteOption(_ option: RouteOption) {
         guard !isNavigating else { return }

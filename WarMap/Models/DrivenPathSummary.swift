@@ -10,7 +10,7 @@ struct DrivenPathSummary: Identifiable, Equatable {
         "Route \(id + 1)"
     }
 
-    var detail: String {
-        "\(DistanceFormatting.format(distance: distanceMeters)) · \(pointCount) points"
+    func detail(preferences: DistanceUnitPreferences) -> String {
+        "\(DistanceFormatting.format(distance: distanceMeters, preferences: preferences)) · \(pointCount) points"
     }
 }

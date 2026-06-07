@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DirectionsBannerView: View {
     let guidance: NavigationGuidanceState
+    let distancePreferences: DistanceUnitPreferences
     let isNavigating: Bool
     let isCalculatingRoute: Bool
     let hasRoute: Bool
@@ -31,10 +32,16 @@ struct DirectionsBannerView: View {
 
                         HStack(spacing: 12) {
                             if !guidance.arrived {
-                                Text(DistanceFormatting.format(distance: guidance.distanceToManeuver))
+                                Text(DistanceFormatting.format(
+                                    distance: guidance.distanceToManeuver,
+                                    preferences: distancePreferences
+                                ))
                                     .font(.subheadline.weight(.semibold))
                             }
-                            Text(DistanceFormatting.format(distance: guidance.remainingDistance))
+                            Text(DistanceFormatting.format(
+                                distance: guidance.remainingDistance,
+                                preferences: distancePreferences
+                            ))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text(DistanceFormatting.format(duration: guidance.remainingTime))

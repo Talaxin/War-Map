@@ -3,6 +3,7 @@ import SwiftUI
 struct RouteOptionsPickerView: View {
     let options: [RouteOption]
     let selectedID: String?
+    let distancePreferences: DistanceUnitPreferences
     let onSelect: (RouteOption) -> Void
 
     var body: some View {
@@ -18,11 +19,11 @@ struct RouteOptionsPickerView: View {
                         onSelect(option)
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(option.additionalTimeLabel)
+                            Text(option.additionalTimeLabel(preferences: distancePreferences))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(selectedID == option.id ? Color.accentColor : .primary)
 
-                            Text(option.detailLabel)
+                            Text(option.detailLabel(preferences: distancePreferences))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -44,7 +45,9 @@ struct RouteOptionsPickerView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("Route \(index + 1), \(option.additionalTimeLabel), \(option.detailLabel)")
+                    .accessibilityLabel(
+                        "Route \(index + 1), \(option.additionalTimeLabel(preferences: distancePreferences)), \(option.detailLabel(preferences: distancePreferences))"
+                    )
                     .accessibilityAddTraits(selectedID == option.id ? .isSelected : [])
                 }
             }

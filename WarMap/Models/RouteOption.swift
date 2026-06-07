@@ -12,14 +12,14 @@ struct RouteOption: Identifiable, Equatable {
         "\(route.distance)-\(route.expectedTravelTime)-\(route.polyline.pointCount)"
     }
 
-    var additionalTimeLabel: String {
+    func additionalTimeLabel(preferences: DistanceUnitPreferences) -> String {
         if additionalTime < 30 { return "Fastest" }
         return "+\(DistanceFormatting.format(duration: additionalTime))"
     }
 
-    var detailLabel: String {
+    func detailLabel(preferences: DistanceUnitPreferences) -> String {
         let time = DistanceFormatting.format(duration: route.expectedTravelTime)
-        let distance = DistanceFormatting.format(distance: route.distance)
+        let distance = DistanceFormatting.format(distance: route.distance, preferences: preferences)
         return "\(time) · \(distance)"
     }
 

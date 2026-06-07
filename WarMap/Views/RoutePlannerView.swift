@@ -27,6 +27,7 @@ struct RoutePlannerView: View {
                 highlightedTrackSegmentIndex: viewModel.locationManager.highlightedSegmentIndex,
                 vehicleType: viewModel.settings.vehicleType,
                 trackedPathRevision: viewModel.locationManager.trackedPathRevision,
+                northResetRevision: viewModel.northResetRevision,
                 onUserInteraction: viewModel.userDidInteractWithMap
             )
             .ignoresSafeArea()
@@ -55,10 +56,15 @@ struct RoutePlannerView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    // Reserve space for the map compass (top-right).
-                    Color.clear
-                        .frame(width: 44, height: 44)
-                        .accessibilityHidden(true)
+                    // Compass aligned with settings gear (replaces built-in map compass).
+                    Button(action: viewModel.resetMapNorth) {
+                        Image(systemName: "location.north.fill")
+                            .font(.title3)
+                            .foregroundStyle(.primary)
+                            .padding(10)
+                            .background(.regularMaterial, in: Circle())
+                    }
+                    .accessibilityLabel("Reset map to north")
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
@@ -105,12 +111,14 @@ struct RoutePlannerView: View {
                         RouteOptionsPickerView(
                             options: viewModel.routeOptions,
                             selectedID: viewModel.selectedRouteOptionID,
+                            distancePreferences: viewModel.settings.distanceUnitPreferences,
                             onSelect: viewModel.selectRouteOption
                         )
                     }
 
                     DirectionsBannerView(
                         guidance: viewModel.guidance,
+                        distancePreferences: viewModel.settings.distanceUnitPreferences,
                         isNavigating: viewModel.isNavigating,
                         isCalculatingRoute: viewModel.isCalculatingRoute,
                         hasRoute: viewModel.hasRoute,
@@ -123,7 +131,13 @@ struct RoutePlannerView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(settings: viewModel.settings, locationManager: viewModel.locationManager)
+            SettingsView(
+                settings: viewModel.settings,
+                locationManager: viewModel.locationManager,
+                currentDestination: viewModel.currentDestinationForSaving,
+                onSelectSavedDestination: viewModel.setDestination(from:),
+                onSaveCurrentDestination: viewModel.saveCurrentDestination(as:)
+            )
                 .presentationDetents([.medium, .large])
         }
         .onAppear { viewModel.onAppear() }
