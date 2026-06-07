@@ -103,7 +103,7 @@ struct RoutePlannerView: View {
                         isCalculatingRoute: viewModel.isCalculatingRoute,
                         hasRoute: viewModel.hasRoute,
                         onStart: viewModel.startNavigation,
-                        onStop: viewModel.stopNavigation
+                        onStop: viewModel.endNavigation
                     )
                 }
                 .padding(.horizontal, 12)

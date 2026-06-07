@@ -341,8 +341,9 @@ final class RoutePlannerViewModel: ObservableObject {
             announceGuidanceIfNeeded()
         }
         guidance = guidanceEngine.state
-        if guidance.arrived {
-            stopNavigation()
+        if guidance.arrived, isNavigating {
+            locationManager.stopNavigationUpdates()
+            voiceGuidance.stop()
         }
     }
 
@@ -370,6 +371,14 @@ final class RoutePlannerViewModel: ObservableObject {
             mapTrackingMode = .follow
         }
         syncMapTrackingHardware()
+    }
+
+    func endNavigation() {
+        let arrived = guidance.arrived
+        stopNavigation()
+        if arrived {
+            clearDestination()
+        }
     }
 
     func recenterOnUser() {

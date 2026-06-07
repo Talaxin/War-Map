@@ -51,9 +51,13 @@ struct DirectionsBannerView: View {
                     }
                 }
 
-                if isNavigating {
-                    Button("End", role: .destructive, action: onStop)
-                        .buttonStyle(.bordered)
+                if isNavigating || guidance.arrived {
+                    Button(action: onStop) {
+                        Text("End")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                 } else {
                     Button(action: onStart) {
                         Text("Go")
