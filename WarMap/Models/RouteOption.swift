@@ -21,14 +21,13 @@ struct RouteOption: Identifiable, Equatable {
         let timePart = DistanceFormatting.format(duration: timeDelta)
         let distanceDelta = max(0, route.distance - baseline.distance)
         let distancePart = DistanceFormatting.format(distance: distanceDelta, preferences: preferences)
-        return "+\(timePart) · +\(distancePart)"
+        return "+\(timePart) +\(distancePart)"
     }
 
     func detailLabel(preferences: DistanceUnitPreferences) -> String {
         let time = DistanceFormatting.format(duration: route.expectedTravelTime)
         let distance = DistanceFormatting.format(distance: route.distance, preferences: preferences)
-        let newRoad = DistanceFormatting.format(distance: newRoadMeters, preferences: preferences)
-        return "\(time) · \(distance) · \(newRoad) new"
+        return "\(time) · \(distance)"
     }
 
     static func == (lhs: RouteOption, rhs: RouteOption) -> Bool {
