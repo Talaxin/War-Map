@@ -7,8 +7,13 @@ struct RouteOptionsPickerView: View {
     let distancePreferences: DistanceUnitPreferences
     let onSelect: (RouteOption) -> Void
 
-    private var baselineRoute: MKRoute? {
-        options.min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime })?.route
+    private var baselineOption: RouteOption? {
+        options.min { lhs, rhs in
+            if lhs.route.expectedTravelTime != rhs.route.expectedTravelTime {
+                return lhs.route.expectedTravelTime < rhs.route.expectedTravelTime
+            }
+            return lhs.route.distance < rhs.route.distance
+        }
     }
 
     var body: some View {
@@ -20,8 +25,10 @@ struct RouteOptionsPickerView: View {
 
             HStack(spacing: 8) {
                 ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
-                    let title = baselineRoute.map {
-                        option.shortTitle(relativeTo: $0, preferences: distancePreferences)
+                    let baseline = baselineOption?.route
+                    let isBaseline = option.id == baselineOption?.id
+                    let title = baseline.map {
+                        option.shortTitle(relativeTo: $0, preferences: distancePreferences, isBaseline: isBaseline)
                     } ?? "Route"
                     Button {
                         onSelect(option)
