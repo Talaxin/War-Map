@@ -49,6 +49,20 @@ final class RoutePlannerViewModel: ObservableObject {
 
     var hasRoute: Bool { route != nil }
 
+    var displayedRouteOptions: [RouteOption] {
+        if !routeOptions.isEmpty { return routeOptions }
+        guard let route else { return [] }
+        let newMeters = locationManager.estimateNewDistanceMeters(along: route.polyline)
+        return [
+            RouteOption(
+                id: RouteOption.fingerprint(route),
+                route: route,
+                additionalTime: 0,
+                newRoadMeters: newMeters
+            ),
+        ]
+    }
+
     var routeUIColor: UIColor { settings.routeColor.uiColor }
 
     var trackedUIColor: UIColor { settings.trackedColor.uiColor }
@@ -440,8 +454,11 @@ final class RoutePlannerViewModel: ObservableObject {
 
             let previousID = selectedRouteOptionID
             let defaultOption = preferredDefaultOption(from: options, previousID: previousID)
+                ?? options.first
             if let defaultOption {
                 applyRoute(defaultOption.route, selectedID: defaultOption.id)
+            } else if let fallback = routes.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) {
+                applyRoute(fallback, selectedID: RouteOption.fingerprint(fallback))
             } else {
                 clearRoute()
             }

@@ -19,7 +19,7 @@ struct MapCanvasView: UIViewRepresentable {
     let trackedPathRevision: Int
     var northResetRevision: Int = 0
     var userCenterRevision: Int = 0
-    var mapLayoutMargins: UIEdgeInsets = UIEdgeInsets(top: 56, left: 12, bottom: 4, right: 8)
+    var mapLayoutMargins: UIEdgeInsets = UIEdgeInsets(top: 56, left: 4, bottom: 4, right: 8)
     var onUserInteraction: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
@@ -380,19 +380,15 @@ struct MapCanvasView: UIViewRepresentable {
                 let inset = mapView.safeAreaInsets
                 let targetY = mapView.bounds.maxY - inset.bottom - 2
 
-                func visit(_ view: UIView) {
-                    let typeName = String(describing: type(of: view))
-                    if typeName.localizedCaseInsensitiveContains("attribution") {
-                        var frame = view.frame
-                        frame.origin.y = targetY - frame.height
-                        frame.origin.x = inset.left + 8
-                        view.frame = frame
-                        view.autoresizingMask = [.flexibleTopMargin, .flexibleRightMargin]
-                    }
-                    view.subviews.forEach(visit)
+                for subview in mapView.subviews {
+                    let typeName = String(describing: type(of: subview))
+                    guard typeName.localizedCaseInsensitiveContains("attribution") else { continue }
+                    var frame = subview.frame
+                    frame.origin.y = targetY - frame.height
+                    frame.origin.x = inset.left + 4
+                    subview.frame = frame
+                    subview.autoresizingMask = [.flexibleTopMargin, .flexibleRightMargin]
                 }
-
-                mapView.subviews.forEach(visit)
             }
         }
     }

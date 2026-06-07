@@ -85,10 +85,10 @@ struct RoutePlannerView: View {
         .animation(.easeInOut(duration: 0.25), value: viewModel.isSearchPanelExpanded)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if viewModel.hasRoute || viewModel.isCalculatingRoute {
-                VStack(spacing: 8) {
-                    if !viewModel.routeOptions.isEmpty, !viewModel.isNavigating {
+                VStack(spacing: 10) {
+                    if viewModel.hasRoute, !viewModel.isNavigating {
                         RouteOptionsPickerView(
-                            options: viewModel.routeOptions,
+                            options: viewModel.displayedRouteOptions,
                             selectedID: viewModel.selectedRouteOptionID,
                             distancePreferences: viewModel.settings.distanceUnitPreferences,
                             onSelect: viewModel.selectRouteOption
@@ -210,39 +210,46 @@ struct RoutePlannerView: View {
     }
 
     private var expandedSearchChrome: some View {
-        HStack(alignment: .top, spacing: 8) {
-            VStack(spacing: 0) {
-                Color.clear.frame(height: 10)
-                mapChromeButton(
-                    systemName: "gearshape.fill",
-                    accessibilityLabel: "Settings"
-                ) {
-                    showSettings = true
-                }
-                .frame(height: searchRowHeight)
-                Divider().frame(height: 1)
-                mapChromeButton(
-                    systemName: "mappin.and.ellipse",
-                    accessibilityLabel: "Saved destinations"
-                ) {
-                    showSavedDestinations = true
-                }
-                .frame(height: searchRowHeight)
-                Color.clear.frame(height: 10)
-            }
-
+        ZStack(alignment: .top) {
             expandedSearchCard
-                .frame(maxWidth: .infinity)
+                .padding(.leading, chromeButtonSize + 8)
+                .padding(.trailing, chromeButtonSize + 8)
 
-            VStack(spacing: 0) {
-                Color.clear.frame(height: 10)
-                compassSpacer
+            HStack(alignment: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 10)
+                    mapChromeButton(
+                        systemName: "gearshape.fill",
+                        accessibilityLabel: "Settings"
+                    ) {
+                        showSettings = true
+                    }
                     .frame(height: searchRowHeight)
-                Divider().frame(height: 1)
-                Color.clear
-                    .frame(width: chromeButtonSize, height: searchRowHeight)
-                    .accessibilityHidden(true)
-                Color.clear.frame(height: 10)
+                    Divider().frame(height: 1)
+                    mapChromeButton(
+                        systemName: "mappin.and.ellipse",
+                        accessibilityLabel: "Saved destinations"
+                    ) {
+                        showSavedDestinations = true
+                    }
+                    .frame(height: searchRowHeight)
+                    Color.clear.frame(height: 10)
+                }
+                .frame(width: chromeButtonSize)
+
+                Spacer(minLength: 0)
+
+                VStack(spacing: 0) {
+                    Color.clear.frame(height: 10)
+                    compassSpacer
+                        .frame(height: searchRowHeight)
+                    Divider().frame(height: 1)
+                    Color.clear
+                        .frame(width: chromeButtonSize, height: searchRowHeight)
+                        .accessibilityHidden(true)
+                    Color.clear.frame(height: 10)
+                }
+                .frame(width: chromeButtonSize)
             }
         }
         .padding(.horizontal, 12)
@@ -334,6 +341,7 @@ struct RoutePlannerView: View {
         }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
