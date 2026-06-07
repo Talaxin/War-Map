@@ -523,59 +523,63 @@ final class RoutePlannerViewModel: ObservableObject {
                 byID[item.id] = item
             }
         }
-        let scored = Array(byID.values)
+
+        let sortedByTime = byID.values.sorted {
+            $0.route.expectedTravelTime < $1.route.expectedTravelTime
+        }
 
         let percent = max(0, min(100, settings.newRoadPercent))
         let slider = Double(percent) / 100.0
         let minNewRequired = slider * referenceRoute.distance
 
-        let qualifying = scored.filter { $0.newMeters >= minNewRequired - 1 }
         let pool: [Scored]
         if percent == 0 {
-            pool = scored
-        } else if qualifying.isEmpty {
-            pool = scored.sorted {
-                if abs($0.newMeters - $1.newMeters) > 1 { return $0.newMeters > $1.newMeters }
-                return $0.route.expectedTravelTime < $1.route.expectedTravelTime
+            pool = sortedByTime
+        } else {
+            let qualifying = sortedByTime.filter { $0.newMeters >= minNewRequired - 1 }
+            if qualifying.isEmpty {
+                pool = sortedByTime
+            } else {
+                pool = qualifying
+            }
+        }
+
+        guard let fastest = pool.first else { return [] }
+        let baselineTime = fastest.route.expectedTravelTime
+
+        var picks: [Scored] = []
+        var seenIDs: Set<String> = []
+
+        func appendUnique(_ item: Scored) {
+            guard !seenIDs.contains(item.id) else { return }
+            seenIDs.insert(item.id)
+            picks.append(item)
+        }
+
+        appendUnique(fastest)
+
+        if percent == 0 {
+            for item in pool where picks.count < 3 {
+                appendUnique(item)
             }
         } else {
-            pool = qualifying
-        }
-
-        guard let fastestQualifying = pool.min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) else {
-            return []
-        }
-
-        let baselineTime = fastestQualifying.route.expectedTravelTime
-        var picks: [Scored] = [fastestQualifying]
-
-        let alternates = pool
-            .filter { $0.id != fastestQualifying.id }
-            .sorted {
-                if abs($0.newMeters - $1.newMeters) > 1 { return $0.newMeters > $1.newMeters }
+            let targetNew = minNewRequired
+            let byNewRoadFit = pool.filter { $0.id != fastest.id }.sorted {
+                let lhsFit = abs($0.newMeters - targetNew)
+                let rhsFit = abs($1.newMeters - targetNew)
+                if abs(lhsFit - rhsFit) > 1 { return lhsFit < rhsFit }
                 return $0.route.expectedTravelTime < $1.route.expectedTravelTime
             }
-
-        for item in alternates {
-            picks.append(item)
-            if picks.count == 3 { break }
-        }
-
-        if picks.count < 3 {
-            for item in pool.sorted(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) {
-                guard !picks.contains(where: { $0.id == item.id }) else { continue }
-                picks.append(item)
-                if picks.count == 3 { break }
+            for item in byNewRoadFit where picks.count < 3 {
+                appendUnique(item)
+            }
+            for item in pool.sorted(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }) where picks.count < 3 {
+                appendUnique(item)
             }
         }
 
         return picks
-            .sorted { lhs, rhs in
-                let lhsTime = lhs.route.expectedTravelTime
-                let rhsTime = rhs.route.expectedTravelTime
-                if abs(lhsTime - rhsTime) > 1 { return lhsTime < rhsTime }
-                return lhs.newMeters > rhs.newMeters
-            }
+            .sorted { $0.route.expectedTravelTime < $1.route.expectedTravelTime }
             .prefix(3)
             .map {
                 RouteOption(

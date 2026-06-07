@@ -42,7 +42,7 @@ final class RouteDirectionsService {
         preferences: RoutePreferences,
         discoverNewRoadAlternates: Bool = false
     ) async throws -> [MKRoute] {
-        var routes = try await fetchRoutes(from: start, to: destination, preferences: preferences)
+        var routes = try await fetchPrimaryRoutes(from: start, to: destination, preferences: preferences)
 
         if discoverNewRoadAlternates {
             var discoveryPreferences: [RoutePreferences] = []
@@ -87,10 +87,20 @@ final class RouteDirectionsService {
 
         routes = routes.filter { routeMatchesEndpoints($0, start: start.coordinate, destination: destination.coordinate) }
         routes = deduplicatedRoutes(routes)
+        routes.sort { $0.expectedTravelTime < $1.expectedTravelTime }
         guard !routes.isEmpty else {
             throw RouteDirectionsError.noRoute
         }
         return routes
+    }
+
+    /// Primary Apple Maps alternates for the user's preferences.
+    func fetchPrimaryRoutes(
+        from start: MapPlace,
+        to destination: MapPlace,
+        preferences: RoutePreferences
+    ) async throws -> [MKRoute] {
+        try await fetchRoutes(from: start, to: destination, preferences: preferences)
     }
 
     private func fetchRoutes(
@@ -158,8 +168,8 @@ final class RouteDirectionsService {
         var unique: [MKRoute] = []
         for route in routes {
             let duplicate = unique.contains { existing in
-                abs(existing.distance - route.distance) < 250
-                    && abs(existing.expectedTravelTime - route.expectedTravelTime) < 90
+                abs(existing.distance - route.distance) < 150
+                    && abs(existing.expectedTravelTime - route.expectedTravelTime) < 30
             }
             if !duplicate {
                 unique.append(route)

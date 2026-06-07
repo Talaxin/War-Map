@@ -15,12 +15,17 @@ struct RouteOption: Identifiable, Equatable {
     /// Short label for the route picker card title.
     func shortTitle(relativeTo baseline: MKRoute, preferences: DistanceUnitPreferences) -> String {
         let timeDelta = route.expectedTravelTime - baseline.expectedTravelTime
-        if timeDelta < 1 {
+        let roundedBaselineMinutes = Int((baseline.expectedTravelTime / 60.0).rounded())
+        let roundedRouteMinutes = Int((route.expectedTravelTime / 60.0).rounded())
+        if timeDelta < 15 || roundedRouteMinutes <= roundedBaselineMinutes {
             return "Fastest"
         }
-        let timePart = DistanceFormatting.format(duration: timeDelta)
-        let distanceDelta = max(0, route.distance - baseline.distance)
-        let distancePart = DistanceFormatting.format(distance: distanceDelta, preferences: preferences)
+        let timePart = DistanceFormatting.formatAdditionalDuration(timeDelta)
+        let distanceDelta = route.distance - baseline.distance
+        let distancePart = DistanceFormatting.formatAdditionalDistance(
+            max(0, distanceDelta),
+            preferences: preferences
+        )
         return "+\(timePart) +\(distancePart)"
     }
 
