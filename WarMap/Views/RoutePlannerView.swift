@@ -66,12 +66,11 @@ struct RoutePlannerView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    mapChromeButton(
-                        systemName: "compass.drawing",
-                        accessibilityLabel: "Reset map to north"
-                    ) {
-                        viewModel.resetMapNorth()
-                    }
+                    // Reserve space for the native MKMapView compass (top-right).
+                    Color.clear
+                        .frame(width: chromeButtonSize, height: chromeButtonSize)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
@@ -85,7 +84,9 @@ struct RoutePlannerView: View {
                 }
 
                 Spacer(minLength: 0)
+                    .allowsHitTesting(false)
             }
+            .allowsHitTesting(true)
 
             if viewModel.locationManager.isAuthorized {
                 VStack {

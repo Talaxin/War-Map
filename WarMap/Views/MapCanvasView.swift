@@ -19,6 +19,7 @@ struct MapCanvasView: UIViewRepresentable {
     let trackedPathRevision: Int
     var northResetRevision: Int = 0
     var userCenterRevision: Int = 0
+    var mapLayoutMargins: UIEdgeInsets = UIEdgeInsets(top: 56, left: 12, bottom: 4, right: 8)
     var onUserInteraction: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
@@ -32,8 +33,8 @@ struct MapCanvasView: UIViewRepresentable {
         mapView.isZoomEnabled = true
         mapView.isScrollEnabled = true
         mapView.showsUserLocation = true
-        mapView.showsCompass = false
-        mapView.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 140, right: 12)
+        mapView.showsCompass = true
+        mapView.layoutMargins = mapLayoutMargins
         mapView.pointOfInterestFilter = .includingAll
         context.coordinator.installGestureObservers(on: mapView)
         return mapView
@@ -41,6 +42,11 @@ struct MapCanvasView: UIViewRepresentable {
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
         context.coordinator.parent = self
+
+        if mapLayoutMargins != context.coordinator.lastMapLayoutMargins {
+            mapView.layoutMargins = mapLayoutMargins
+            context.coordinator.lastMapLayoutMargins = mapLayoutMargins
+        }
 
         if context.coordinator.lastVehicleType != vehicleType {
             context.coordinator.lastVehicleType = vehicleType
@@ -176,6 +182,7 @@ struct MapCanvasView: UIViewRepresentable {
 
         context.coordinator.lastFollowUser = followUser
         context.coordinator.lastTrackingMode = trackingMode
+        context.coordinator.pinAttributionToBottom(on: mapView)
     }
 
     private static func routeFingerprint(for route: MKRoute?) -> String {
@@ -205,6 +212,7 @@ struct MapCanvasView: UIViewRepresentable {
         var lastTrackingMode: MapTrackingMode = .follow
         var lastNorthResetRevision = -1
         var lastUserCenterRevision = -1
+        var lastMapLayoutMargins: UIEdgeInsets?
         var idleViewportKey: String?
         private var isProgrammaticRegionChange = false
         private var programmaticChangeDepth = 0
@@ -361,6 +369,30 @@ struct MapCanvasView: UIViewRepresentable {
             guard !isProgrammaticRegionChange else { return }
             if parent.followUser, mapView.userTrackingMode == .none {
                 parent.onUserInteraction()
+            }
+            pinAttributionToBottom(on: mapView)
+        }
+
+        func pinAttributionToBottom(on mapView: MKMapView) {
+            DispatchQueue.main.async { [weak mapView] in
+                guard let mapView else { return }
+                mapView.layoutIfNeeded()
+                let inset = mapView.safeAreaInsets
+                let targetY = mapView.bounds.maxY - inset.bottom - 2
+
+                func visit(_ view: UIView) {
+                    let typeName = String(describing: type(of: view))
+                    if typeName.localizedCaseInsensitiveContains("attribution") {
+                        var frame = view.frame
+                        frame.origin.y = targetY - frame.height
+                        frame.origin.x = inset.left + 8
+                        view.frame = frame
+                        view.autoresizingMask = [.flexibleTopMargin, .flexibleRightMargin]
+                    }
+                    view.subviews.forEach(visit)
+                }
+
+                mapView.subviews.forEach(visit)
             }
         }
     }
