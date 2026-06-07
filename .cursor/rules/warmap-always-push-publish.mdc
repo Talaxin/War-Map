@@ -1,0 +1,18 @@
+---
+description: War Map — always commit, push, and let CI publish to Feather without asking
+alwaysApply: true
+---
+
+# War Map — always push and publish
+
+After **any** War Map app change (Swift, plist, assets, `WarMap.xcodeproj`, scripts that affect the IPA):
+
+1. **Bump version** — run `python3 scripts/bump_version.py` before finishing.
+2. **Commit** — stage relevant source changes; do not ask permission.
+3. **Push** — `git push origin main` immediately after commit. Rebase on remote if needed; never leave work unpushed.
+4. **Do not ask** — never prompt “want me to commit/push/publish?” The answer is always yes.
+5. **CI publishes Feather** — `.github/workflows/build-ipa.yml` builds the IPA and pushes `build/WarMap.ipa` + `repo.json` to `main`. After your push, verify remote `repo.json` shows the new version (or wait for CI); do not stop at source-only push.
+6. **If CI fails or publish is stale** — diagnose, fix, push again, or trigger `workflow_dispatch` on Build War Map IPA. Do not hand off to the user.
+7. **Do not install to LG** unless the user explicitly asks.
+
+Feather source: `https://raw.githubusercontent.com/Talaxin/War-Map/main/repo.json` — IPA must use GitHub raw URLs, not jsDelivr.
