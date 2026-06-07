@@ -16,6 +16,7 @@ final class LocationManager: NSObject, ObservableObject {
     private let travelHistory = TravelHistoryStore()
     private var lastTrackedLocation: CLLocation?
     @Published private(set) var trackedPathRevision = 0
+    @Published var highlightedSegmentIndex: Int?
 
     private let maxTrackingGapSeconds: TimeInterval = 90
     private let maxTrackingGapMeters: CLLocationDistance = 200
@@ -152,6 +153,24 @@ extension LocationManager {
         travelHistory.trackedPolylines
     }
 
+    var drivenPathSummaries: [DrivenPathSummary] {
+        travelHistory.segmentSummaries()
+    }
+
+    func setHighlightedSegment(_ index: Int?) {
+        highlightedSegmentIndex = index
+    }
+
+    func deleteDrivenSegment(at index: Int) {
+        travelHistory.removeSegment(at: index)
+        if highlightedSegmentIndex == index {
+            highlightedSegmentIndex = nil
+        } else if let highlightedSegmentIndex, highlightedSegmentIndex > index {
+            self.highlightedSegmentIndex = highlightedSegmentIndex - 1
+        }
+        notifyTrackedPathChanged()
+    }
+
     func suspendTravelTracking() {
         lastTrackedLocation = nil
     }
@@ -267,12 +286,81 @@ final class TravelHistoryStore {
     }
 
     var trackedPolylines: [MKPolyline] {
-        pathSegments.compactMap { segment in
+        pathSegments.enumerated().compactMap { index, segment in
             guard segment.count >= 2 else { return nil }
             var coords = segment
             let polyline = MKPolyline(coordinates: &coords, count: coords.count)
-            polyline.title = "tracked"
+            polyline.title = "tracked-\(index)"
             return polyline
+        }
+    }
+
+    func segmentSummaries() -> [DrivenPathSummary] {
+        pathSegments.enumerated().compactMap { index, segment in
+            guard segment.count >= 2 else { return nil }
+            var distance: CLLocationDistance = 0
+            for i in 1..<segment.count {
+                let start = CLLocation(latitude: segment[i - 1].latitude, longitude: segment[i - 1].longitude)
+                let end = CLLocation(latitude: segment[i].latitude, longitude: segment[i].longitude)
+                distance += start.distance(from: end)
+            }
+            return DrivenPathSummary(id: index, distanceMeters: distance, pointCount: segment.count)
+        }
+    }
+
+    func removeSegment(at index: Int) {
+        guard pathSegments.indices.contains(index) else { return }
+        pathSegments.remove(at: index)
+        rebuildVisitedCellsFromPaths()
+        saveTask?.cancel()
+        let cells = visited
+        let segments = pathSegments
+        let cellsURL = cellsFileURL
+        let pathURL = pathFileURL
+        saveTask = Task {
+            if let data = try? PropertyListEncoder().encode(Array(cells)) {
+                try? data.write(to: cellsURL, options: [.atomic])
+            }
+            let encodedSegments = segments.map { segment in
+                segment.map { [$0.latitude, $0.longitude] }
+            }
+            if let data = try? PropertyListEncoder().encode(encodedSegments) {
+                try? data.write(to: pathURL, options: [.atomic])
+            }
+        }
+    }
+
+    private func rebuildVisitedCellsFromPaths() {
+        visited.removeAll()
+        for segment in pathSegments {
+            markVisitedCells(along: segment)
+        }
+    }
+
+    private func markVisitedCells(along segment: [CLLocationCoordinate2D]) {
+        guard segment.count >= 2 else {
+            if let first = segment.first {
+                visited.insert(cellKey(for: first))
+            }
+            return
+        }
+
+        for index in 1..<segment.count {
+            let from = segment[index - 1]
+            let to = segment[index]
+            let a = MKMapPoint(from)
+            let b = MKMapPoint(to)
+            let meters = a.distance(to: b)
+            guard meters > 0 else { continue }
+
+            let step = max(cellSizeMeters * 0.75, 10)
+            let steps = max(Int(ceil(meters / step)), 1)
+            for i in 0...steps {
+                let t = Double(i) / Double(steps)
+                let x = a.x + (b.x - a.x) * t
+                let y = a.y + (b.y - a.y) * t
+                visited.insert(cellKey(forMapPointX: x, y: y))
+            }
         }
     }
 

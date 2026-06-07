@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var locationManager: LocationManager
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -57,6 +58,16 @@ struct SettingsView: View {
                     )
                 }
 
+                NavigationLink {
+                    PastRoutesSettingsView(locationManager: locationManager)
+                } label: {
+                    SettingsRowLabel(
+                        title: "Past Routes",
+                        subtitle: pastRoutesSummary,
+                        systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90"
+                    )
+                }
+
                 Section {
                     HStack {
                         Spacer()
@@ -86,6 +97,11 @@ struct SettingsView: View {
             settings.allowTollRoads ? "Tolls" : nil,
         ].compactMap { $0 }
         return enabled.isEmpty ? "None" : enabled.joined(separator: ", ")
+    }
+
+    private var pastRoutesSummary: String {
+        let count = locationManager.drivenPathSummaries.count
+        return count == 0 ? "None saved" : "\(count) saved"
     }
 
     private var appVersion: String {
@@ -248,5 +264,67 @@ private struct RouteOptionsSettingsView: View {
         }
         .navigationTitle("Route Options")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct PastRoutesSettingsView: View {
+    @ObservedObject var locationManager: LocationManager
+
+    var body: some View {
+        Group {
+            if locationManager.drivenPathSummaries.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "road.lanes.curved.left")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                    Text("No past routes")
+                        .font(.headline)
+                    Text("Roads you drive are saved here. Deleting a route lets War Map treat those roads as new again.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(locationManager.drivenPathSummaries) { route in
+                        Button {
+                            if locationManager.highlightedSegmentIndex == route.id {
+                                locationManager.setHighlightedSegment(nil)
+                            } else {
+                                locationManager.setHighlightedSegment(route.id)
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(route.title)
+                                    Text(route.detail)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if locationManager.highlightedSegmentIndex == route.id {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.yellow)
+                                }
+                            }
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                locationManager.deleteDrivenSegment(at: route.id)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Past Routes")
+        .navigationBarTitleDisplayMode(.inline)
+        .onDisappear {
+            locationManager.setHighlightedSegment(nil)
+        }
     }
 }

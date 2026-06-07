@@ -24,6 +24,7 @@ struct RoutePlannerView: View {
                 trackingMode: viewModel.mapTrackingMode,
                 routeColor: viewModel.routeUIColor,
                 trackedColor: viewModel.trackedUIColor,
+                highlightedTrackSegmentIndex: viewModel.locationManager.highlightedSegmentIndex,
                 vehicleType: viewModel.settings.vehicleType,
                 trackedPathRevision: viewModel.locationManager.trackedPathRevision,
                 onUserInteraction: viewModel.userDidInteractWithMap
@@ -122,7 +123,8 @@ struct RoutePlannerView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(settings: viewModel.settings)
+            SettingsView(settings: viewModel.settings, locationManager: viewModel.locationManager)
+                .presentationDetents([.medium, .large])
         }
         .onAppear { viewModel.onAppear() }
         .onReceive(viewModel.locationManager.$currentLocation) { _ in

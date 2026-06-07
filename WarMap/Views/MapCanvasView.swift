@@ -14,6 +14,7 @@ struct MapCanvasView: UIViewRepresentable {
     let trackingMode: MapTrackingMode
     let routeColor: UIColor
     let trackedColor: UIColor
+    let highlightedTrackSegmentIndex: Int?
     let vehicleType: VehicleType
     let trackedPathRevision: Int
     var onUserInteraction: () -> Void = {}
@@ -49,13 +50,16 @@ struct MapCanvasView: UIViewRepresentable {
 
         let routeFingerprint = Self.routeFingerprint(for: route)
         let routeChanged = routeFingerprint != context.coordinator.lastRouteFingerprint
+        let highlightChanged = highlightedTrackSegmentIndex != context.coordinator.lastHighlightedTrackSegmentIndex
 
         if revisionChanged
             || routeChanged
+            || highlightChanged
             || context.coordinator.needsOverlayRefresh(parent: self)
             || context.coordinator.lastRouteColor != routeColor
             || context.coordinator.lastTrackedColor != trackedColor {
             if revisionChanged
+                || highlightChanged
                 || context.coordinator.needsOverlayRefresh(parent: self)
                 || context.coordinator.lastTrackedColor != trackedColor {
                 mapView.removeOverlays(mapView.overlays.filter { ($0 as? MKPolyline)?.title != "route" })
@@ -64,6 +68,7 @@ struct MapCanvasView: UIViewRepresentable {
                 }
                 context.coordinator.lastHadTracked = !trackedPolylines.isEmpty
                 context.coordinator.lastTrackedColor = trackedColor
+                context.coordinator.lastHighlightedTrackSegmentIndex = highlightedTrackSegmentIndex
             }
 
             if routeChanged
@@ -85,14 +90,16 @@ struct MapCanvasView: UIViewRepresentable {
         mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
         if let start, showsStartPin, !isNavigating {
             let annotation = MKPointAnnotation()
-            annotation.coordinate = start.coordinate
+            annotation.coordinate = Self.routeEndpoint(for: route, atStart: true) ?? start.coordinate
             annotation.title = "start"
+            annotation.subtitle = start.title
             mapView.addAnnotation(annotation)
         }
         if let destination {
             let annotation = MKPointAnnotation()
-            annotation.coordinate = destination.coordinate
+            annotation.coordinate = Self.routeEndpoint(for: route, atStart: false) ?? destination.coordinate
             annotation.title = "destination"
+            annotation.subtitle = destination.title
             mapView.addAnnotation(annotation)
         }
 
@@ -118,10 +125,20 @@ struct MapCanvasView: UIViewRepresentable {
             if context.coordinator.shouldApplyIdleViewport(
                 parent: self,
                 followChanged: followChanged,
-                routeChanged: routeChanged
+                routeChanged: routeChanged,
+                highlightChanged: highlightChanged
             ) {
                 context.coordinator.setProgrammaticChange(true)
-                if let route, !isNavigating {
+                if let index = highlightedTrackSegmentIndex,
+                   trackedPolylines.indices.contains(index),
+                   !isNavigating {
+                    let padding = UIEdgeInsets(top: 120, left: 48, bottom: 200, right: 48)
+                    mapView.setVisibleMapRect(
+                        trackedPolylines[index].boundingMapRect,
+                        edgePadding: padding,
+                        animated: true
+                    )
+                } else if let route, !isNavigating {
                     let padding = UIEdgeInsets(top: 120, left: 48, bottom: 200, right: 48)
                     mapView.setVisibleMapRect(
                         route.polyline.boundingMapRect,
@@ -145,6 +162,14 @@ struct MapCanvasView: UIViewRepresentable {
         return RouteOption.fingerprint(route)
     }
 
+    private static func routeEndpoint(for route: MKRoute?, atStart: Bool) -> CLLocationCoordinate2D? {
+        guard let route, route.polyline.pointCount > 0 else { return nil }
+        let points = route.polyline.points()
+        return atStart
+            ? points[0].coordinate
+            : points[route.polyline.pointCount - 1].coordinate
+    }
+
     final class Coordinator: NSObject, MKMapViewDelegate {
         var parent: MapCanvasView
         var lastVehicleType: VehicleType?
@@ -154,6 +179,7 @@ struct MapCanvasView: UIViewRepresentable {
         var lastRouteFingerprint: String?
         var lastRouteColor: UIColor?
         var lastTrackedColor: UIColor?
+        var lastHighlightedTrackSegmentIndex: Int?
         var lastFollowUser = true
         var lastTrackingMode: MapTrackingMode = .follow
         var idleViewportKey: String?
@@ -201,9 +227,10 @@ struct MapCanvasView: UIViewRepresentable {
         func shouldApplyIdleViewport(
             parent: MapCanvasView,
             followChanged: Bool,
-            routeChanged: Bool = false
+            routeChanged: Bool = false,
+            highlightChanged: Bool = false
         ) -> Bool {
-            if followChanged || routeChanged { return true }
+            if followChanged || routeChanged || highlightChanged { return true }
             let key = idleViewportKey(for: parent)
             return key != idleViewportKey
         }
@@ -214,8 +241,9 @@ struct MapCanvasView: UIViewRepresentable {
 
         private func idleViewportKey(for parent: MapCanvasView) -> String {
             let routeID = MapCanvasView.routeFingerprint(for: parent.route)
+            let highlight = parent.highlightedTrackSegmentIndex.map(String.init) ?? "none"
             let region = parent.region
-            return "\(routeID)-\(parent.isNavigating)-\(region.center.latitude)-\(region.center.longitude)-\(region.span.latitudeDelta)"
+            return "\(routeID)-\(highlight)-\(parent.isNavigating)-\(region.center.latitude)-\(region.center.longitude)-\(region.span.latitudeDelta)"
         }
 
         func refreshUserLocationAnnotation(on mapView: MKMapView) {
@@ -247,54 +275,43 @@ struct MapCanvasView: UIViewRepresentable {
 
             let identifier: String
             let color: UIColor
+            let glyphName: String
             switch point.title {
             case "start":
                 identifier = "StartPin"
                 color = .systemBlue
+                glyphName = "location.fill"
             case "destination":
                 identifier = "DestinationPin"
                 color = .systemRed
+                glyphName = "mappin"
             default:
                 return nil
             }
 
-            let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
-                ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-            view.annotation = annotation
-            view.canShowCallout = false
-            view.image = pinImage(color: color)
-            view.centerOffset = CGPoint(x: 0, y: -((view.image?.size.height ?? 28) / 2))
-            return view
-        }
-
-        private func pinImage(color: UIColor) -> UIImage {
-            let size = CGSize(width: 24, height: 28)
-            let renderer = UIGraphicsImageRenderer(size: size)
-            return renderer.image { _ in
-                color.setFill()
-                let path = UIBezierPath()
-                path.move(to: CGPoint(x: size.width / 2, y: size.height))
-                path.addLine(to: CGPoint(x: size.width, y: size.height * 0.45))
-                path.addArc(
-                    withCenter: CGPoint(x: size.width / 2, y: size.height * 0.35),
-                    radius: size.width / 2,
-                    startAngle: 0,
-                    endAngle: .pi,
-                    clockwise: true
-                )
-                path.close()
-                path.fill()
-                UIColor.white.setFill()
-                UIBezierPath(ovalIn: CGRect(x: 7, y: 5, width: 10, height: 10)).fill()
-            }
+            let marker = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+                ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+            marker.annotation = annotation
+            marker.canShowCallout = false
+            marker.markerTintColor = color
+            marker.glyphTintColor = .white
+            marker.glyphImage = UIImage(systemName: glyphName)
+            marker.displayPriority = .required
+            return marker
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let polyline = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: polyline)
-                if polyline.title == "tracked" {
-                    renderer.strokeColor = parent.trackedColor.withAlphaComponent(0.85)
-                    renderer.lineWidth = 5
+                if polyline.title?.hasPrefix("tracked") == true {
+                    let isHighlighted = parent.highlightedTrackSegmentIndex.map { polyline.title == "tracked-\($0)" } ?? false
+                    if isHighlighted {
+                        renderer.strokeColor = UIColor.systemYellow.withAlphaComponent(0.95)
+                        renderer.lineWidth = 8
+                    } else {
+                        renderer.strokeColor = parent.trackedColor.withAlphaComponent(0.85)
+                        renderer.lineWidth = 5
+                    }
                 } else {
                     renderer.strokeColor = parent.routeColor
                     renderer.lineWidth = 6
