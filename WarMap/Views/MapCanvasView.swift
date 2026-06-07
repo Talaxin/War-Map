@@ -1,3 +1,4 @@
+import CoreLocation
 import MapKit
 import SwiftUI
 import UIKit
@@ -16,6 +17,7 @@ struct MapCanvasView: UIViewRepresentable {
     let trackedColor: UIColor
     let highlightedTrackSegmentIndex: Int?
     let vehicleType: VehicleType
+    let userLocation: CLLocation?
     let trackedPathRevision: Int
     var northResetRevision: Int = 0
     var userCenterRevision: Int = 0
@@ -97,7 +99,9 @@ struct MapCanvasView: UIViewRepresentable {
             }
         }
 
-        mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
+        mapView.removeAnnotations(mapView.annotations.filter {
+            !($0 is MKUserLocation) && !($0 is SnappedUserLocationAnnotation)
+        })
         if let start, showsStartPin, !isNavigating {
             let coordinate = Self.routeEndpoint(for: route, atStart: true) ?? start.coordinate
             let annotation = MapPinAnnotation(
@@ -117,6 +121,8 @@ struct MapCanvasView: UIViewRepresentable {
             mapView.addAnnotation(annotation)
         }
 
+        context.coordinator.updateSnappedUserLocation(on: mapView, location: userLocation, vehicleType: vehicleType)
+
         if northResetRevision != context.coordinator.lastNorthResetRevision {
             context.coordinator.lastNorthResetRevision = northResetRevision
             let camera = mapView.camera.copy() as! MKMapCamera
@@ -132,13 +138,25 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         if followUser {
-            let mode: MKUserTrackingMode = trackingMode == .followWithHeading ? .followWithHeading : .follow
-            if mapView.userTrackingMode != mode
-                || followChanged
-                || trackingModeChanged
-                || centerRevisionChanged {
+            if mapView.userTrackingMode != .none {
                 context.coordinator.setProgrammaticChange(true)
-                mapView.setUserTrackingMode(mode, animated: followChanged || trackingModeChanged)
+                mapView.setUserTrackingMode(.none, animated: false)
+                context.coordinator.setProgrammaticChange(false)
+            }
+
+            let shouldRecenter = followChanged
+                || trackingModeChanged
+                || centerRevisionChanged
+                || context.coordinator.shouldRecenterForUserLocation(parent: self)
+            if shouldRecenter, let location = userLocation {
+                context.coordinator.setProgrammaticChange(true)
+                let camera = mapView.camera.copy() as! MKMapCamera
+                camera.centerCoordinate = location.coordinate
+                if trackingMode == .followWithHeading, location.course >= 0 {
+                    camera.heading = location.course
+                }
+                mapView.setCamera(camera, animated: followChanged || trackingModeChanged || centerRevisionChanged)
+                context.coordinator.recordUserLocation(location)
                 context.coordinator.setProgrammaticChange(false)
             }
         } else {
@@ -212,6 +230,7 @@ struct MapCanvasView: UIViewRepresentable {
         var lastTrackingMode: MapTrackingMode = .follow
         var lastNorthResetRevision = -1
         var lastUserCenterRevision = -1
+        var lastUserLocationFingerprint: String?
         var lastMapLayoutMargins: UIEdgeInsets?
         var idleViewportKey: String?
         private var isProgrammaticRegionChange = false
@@ -290,28 +309,79 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         func refreshUserLocationAnnotation(on mapView: MKMapView) {
-            mapView.showsUserLocation = false
-            mapView.showsUserLocation = true
+            if let annotation = mapView.annotations.compactMap({ $0 as? SnappedUserLocationAnnotation }).first {
+                mapView.removeAnnotation(annotation)
+                mapView.addAnnotation(annotation)
+            }
+        }
+
+        func shouldRecenterForUserLocation(parent: MapCanvasView) -> Bool {
+            guard let location = parent.userLocation else { return false }
+            let fingerprint = Self.userLocationFingerprint(location)
+            return fingerprint != lastUserLocationFingerprint
+        }
+
+        func recordUserLocation(_ location: CLLocation) {
+            lastUserLocationFingerprint = Self.userLocationFingerprint(location)
+        }
+
+        private static func userLocationFingerprint(_ location: CLLocation) -> String {
+            String(format: "%.6f-%.6f-%.1f", location.coordinate.latitude, location.coordinate.longitude, location.course)
+        }
+
+        func updateSnappedUserLocation(on mapView: MKMapView, location: CLLocation?, vehicleType: VehicleType) {
+            mapView.showsUserLocation = location == nil
+
+            guard let location else {
+                if let existing = mapView.annotations.compactMap({ $0 as? SnappedUserLocationAnnotation }).first {
+                    mapView.removeAnnotation(existing)
+                }
+                return
+            }
+
+            if let existing = mapView.annotations.compactMap({ $0 as? SnappedUserLocationAnnotation }).first {
+                existing.coordinate = location.coordinate
+                existing.course = location.course
+                if let view = mapView.view(for: existing) {
+                    configureUserLocationView(view, vehicleType: vehicleType, course: location.course)
+                }
+            } else {
+                let annotation = SnappedUserLocationAnnotation(
+                    coordinate: location.coordinate,
+                    course: location.course
+                )
+                mapView.addAnnotation(annotation)
+            }
+        }
+
+        private func configureUserLocationView(
+            _ view: MKAnnotationView,
+            vehicleType: VehicleType,
+            course: CLLocationDirection
+        ) {
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
+            let image = UIImage(
+                systemName: vehicleType.symbolName,
+                withConfiguration: symbolConfig
+            )?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
+            view.image = image
+            view.centerOffset = CGPoint(x: 0, y: -((image?.size.height ?? 24) / 2))
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            if annotation is MKUserLocation {
-                guard !parent.vehicleType.usesSystemUserLocation else { return nil }
-
-                let identifier = "CustomUserLocation"
+            if let snapped = annotation as? SnappedUserLocationAnnotation {
+                let identifier = "SnappedUserLocation"
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
                     ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
 
                 view.annotation = annotation
                 view.canShowCallout = false
-                let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
-                let image = UIImage(
-                    systemName: parent.vehicleType.symbolName,
-                    withConfiguration: symbolConfig
-                )?.withTintColor(.systemBlue, renderingMode: .alwaysOriginal)
-                view.image = image
-                view.centerOffset = CGPoint(x: 0, y: -((image?.size.height ?? 24) / 2))
+                configureUserLocationView(view, vehicleType: parent.vehicleType, course: snapped.course)
                 return view
+            }
+
+            if annotation is MKUserLocation {
+                return nil
             }
 
             guard let pin = annotation as? MapPinAnnotation else { return nil }

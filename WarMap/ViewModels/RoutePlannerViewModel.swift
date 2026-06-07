@@ -486,6 +486,7 @@ final class RoutePlannerViewModel: ObservableObject {
         route = nil
         routeOptions = []
         selectedRouteOptionID = nil
+        locationManager.setSnapRoute(nil)
         guidanceEngine.reset()
         guidance = guidanceEngine.state
     }
@@ -493,6 +494,7 @@ final class RoutePlannerViewModel: ObservableObject {
     private func applyRoute(_ newRoute: MKRoute, selectedID: String) {
         route = newRoute
         selectedRouteOptionID = selectedID
+        locationManager.setSnapRoute(newRoute)
         guidanceEngine.load(route: newRoute)
         guidance = guidanceEngine.state
     }

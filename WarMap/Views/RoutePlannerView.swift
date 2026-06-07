@@ -30,6 +30,7 @@ struct RoutePlannerView: View {
                 trackedColor: viewModel.trackedUIColor,
                 highlightedTrackSegmentIndex: viewModel.locationManager.highlightedSegmentIndex,
                 vehicleType: viewModel.settings.vehicleType,
+                userLocation: viewModel.locationManager.currentLocation,
                 trackedPathRevision: viewModel.locationManager.trackedPathRevision,
                 northResetRevision: viewModel.northResetRevision,
                 userCenterRevision: viewModel.userCenterRevision,

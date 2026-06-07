@@ -13,7 +13,9 @@ final class LocationManager: NSObject, ObservableObject {
     private let manager = CLLocationManager()
     private let geocoder = CLGeocoder()
     private var isNavigationMode = false
+    private var snapRoutePolyline: MKPolyline?
     private let travelHistory = TravelHistoryStore()
+    private var lastRawLocation: CLLocation?
     private var lastTrackedLocation: CLLocation?
     @Published private(set) var trackedPathRevision = 0
     @Published var highlightedSegmentIndex: Int?
@@ -71,6 +73,13 @@ final class LocationManager: NSObject, ObservableObject {
         manager.startUpdatingLocation()
     }
 
+    func setSnapRoute(_ route: MKRoute?) {
+        snapRoutePolyline = route?.polyline
+        if let lastRawLocation {
+            applySnappedLocation(from: lastRawLocation, forceRepublish: true)
+        }
+    }
+
     /// Enables compass heading for map follow-with-heading mode (outside navigation).
     func setFollowHeadingEnabled(_ enabled: Bool) {
         wantsHeadingForMap = enabled
@@ -124,9 +133,8 @@ extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor in
-            currentLocation = location
+            applySnappedLocation(from: location)
             reverseGeocode(location)
-            trackTravelIfPossible(location)
         }
     }
 
@@ -173,6 +181,54 @@ extension LocationManager {
 
     func suspendTravelTracking() {
         lastTrackedLocation = nil
+    }
+
+    private func applySnappedLocation(from raw: CLLocation, forceRepublish: Bool = false) {
+        lastRawLocation = raw
+        let snapped = roadSnappedLocation(from: raw)
+        if forceRepublish || !coordinatesEqual(currentLocation?.coordinate, snapped.coordinate) {
+            currentLocation = snapped
+        }
+        trackTravelIfPossible(snapped)
+    }
+
+    private func coordinatesEqual(
+        _ lhs: CLLocationCoordinate2D?,
+        _ rhs: CLLocationCoordinate2D
+    ) -> Bool {
+        guard let lhs else { return false }
+        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
+    }
+
+    private func roadSnappedLocation(from raw: CLLocation) -> CLLocation {
+        let maxDistance = isNavigationMode
+            ? RoadSnapper.navigationMaxDistance
+            : RoadSnapper.trackingMaxDistance
+
+        guard let match = RoadSnapper.snap(
+            raw.coordinate,
+            routePolyline: snapRoutePolyline,
+            trackedPolylines: trackedPolylines,
+            preferRoute: isNavigationMode,
+            maxDistance: maxDistance
+        ) else {
+            return raw
+        }
+
+        var course = raw.course
+        if course < 0, let bearing = match.segmentBearing {
+            course = bearing
+        }
+
+        return CLLocation(
+            coordinate: match.coordinate,
+            altitude: raw.altitude,
+            horizontalAccuracy: raw.horizontalAccuracy,
+            verticalAccuracy: raw.verticalAccuracy,
+            course: course,
+            speed: raw.speed,
+            timestamp: raw.timestamp
+        )
     }
 
     private func registerAppLifecycleObservers() {

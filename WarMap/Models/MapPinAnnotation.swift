@@ -1,4 +1,15 @@
+import CoreLocation
 import MapKit
+
+final class SnappedUserLocationAnnotation: NSObject, MKAnnotation {
+    dynamic var coordinate: CLLocationCoordinate2D
+    var course: CLLocationDirection
+
+    init(coordinate: CLLocationCoordinate2D, course: CLLocationDirection = -1) {
+        self.coordinate = coordinate
+        self.course = course
+    }
+}
 
 final class MapPinAnnotation: MKPointAnnotation {
     enum Role: String {
