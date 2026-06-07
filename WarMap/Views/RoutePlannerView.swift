@@ -198,17 +198,10 @@ struct RoutePlannerView: View {
                         suggestionsScroll
                     }
                 }
-                VStack(spacing: 8) {
-                    Button(action: viewModel.useCurrentLocationForStart) {
-                        Image(systemName: "location.fill")
-                            .font(.body)
-                            .foregroundStyle(viewModel.startUsesCurrentLocation ? .blue : .secondary)
-                    }
-                    Button(action: viewModel.swapEndpoints) {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.body.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
+                Button(action: viewModel.useCurrentLocationForStart) {
+                    Image(systemName: "location.fill")
+                        .font(.body)
+                        .foregroundStyle(viewModel.startUsesCurrentLocation ? .blue : .secondary)
                 }
                 .padding(.top, 2)
             }
@@ -233,6 +226,12 @@ struct RoutePlannerView: View {
                         suggestionsScroll
                     }
                 }
+                Button(action: viewModel.swapEndpoints) {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 2)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
