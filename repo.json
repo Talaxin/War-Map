@@ -4,7 +4,7 @@
   "subtitle": "Wardriving navigation for Feather",
   "description": "War Map \u2014 plan routes, follow turn-by-turn directions, and explore roads with a Feather/AltStore-compatible source.",
   "website": "https://github.com/Talaxin/War-Map",
-  "iconURL": "https://raw.githubusercontent.com/Talaxin/War-Map/main/warmap.png",
+  "iconURL": "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/icon.jpeg",
   "tintColor": "#007AFF",
   "featuredApps": [
     "com.talaxin.warmap"
@@ -20,7 +20,7 @@
       "versionDate": "2026-06-06T19:23:10+00:00",
       "versionDescription": "War Map v0.3.14.",
       "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
-      "iconURL": "https://raw.githubusercontent.com/Talaxin/War-Map/main/warmap.png",
+      "iconURL": "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/icon.jpeg",
       "tintColor": "#007AFF",
       "category": "navigation",
       "versions": [

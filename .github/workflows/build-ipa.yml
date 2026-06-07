@@ -9,6 +9,7 @@ on:
       - "WarMap/**"
       - "WarMap.xcodeproj/**"
       - "warmap.png"
+      - "icon.jpeg"
       - "icons/**"
       - "scripts/**"
       - ".github/workflows/build-ipa.yml"
@@ -70,7 +71,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add build/WarMap.ipa repo.json warmap.png
+          git add build/WarMap.ipa repo.json warmap.png icon.jpeg
           if git diff --staged --quiet; then
             echo "No release changes to publish."
             exit 0
