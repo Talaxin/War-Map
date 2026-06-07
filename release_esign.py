@@ -12,11 +12,17 @@ import argparse
 import json
 import plistlib
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 BUNDLE_ID = "com.talaxin.warmap"
+SOURCE_ICON_URL = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/icon.jpeg"
+DOWNLOAD_URL = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/build/WarMap.ipa"
+APP_DESCRIPTION = (
+    "Plan routes, pick from alternate paths, and navigate with turn-by-turn guidance. "
+    "Remembers roads you have driven."
+)
 
 
 def read_json(path: Path) -> Any:
@@ -52,6 +58,50 @@ def read_ipa_versions(ipa_path: Path) -> tuple[str | None, str | None]:
         return (str(short) if short is not None else None, str(build) if build is not None else None)
 
 
+def utc_now_z() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def normalize_repo(repo: dict[str, Any], *, version: str, description: str, ipa_size: int, now_z: str) -> None:
+    repo["iconURL"] = SOURCE_ICON_URL
+    repo["tintColor"] = "007AFF"
+
+    apps = repo.get("apps", [])
+    app = next((a for a in apps if a.get("bundleIdentifier") == BUNDLE_ID), None)
+    if app is None:
+        raise ValueError(f"No app entry for {BUNDLE_ID!r}")
+
+    app["downloadURL"] = DOWNLOAD_URL
+    app["iconURL"] = SOURCE_ICON_URL
+    app["tintColor"] = "007AFF"
+    app["size"] = ipa_size
+    app["beta"] = False
+    app["localizedDescription"] = APP_DESCRIPTION
+    app["appPermissions"] = {
+        "privacy": {
+            "NSLocationWhenInUseUsageDescription": (
+                "War Map uses your location to show your position, plan routes, "
+                "and provide turn-by-turn directions."
+            ),
+            "NSLocationAlwaysAndWhenInUseUsageDescription": (
+                "War Map uses your location during navigation to update your position on the map."
+            ),
+        }
+    }
+    app["versions"] = [
+        {
+            "version": version,
+            "date": now_z,
+            "localizedDescription": description,
+            "downloadURL": DOWNLOAD_URL,
+            "size": ipa_size,
+        }
+    ]
+    app["version"] = version
+    app["versionDate"] = now_z
+    app["versionDescription"] = description
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Refresh War Map Feather repo metadata.")
     parser.add_argument("--repo-json", default="repo.json")
@@ -67,61 +117,35 @@ def main() -> int:
     ensure_file(ipa_path, "IPA")
 
     repo = read_json(repo_json_path)
-    apps = repo.get("apps", [])
-    app = next((a for a in apps if a.get("bundleIdentifier") == args.bundle_id), None)
-    if app is None:
-        known = [a.get("bundleIdentifier") for a in apps]
-        raise ValueError(f"No app with bundleIdentifier {args.bundle_id!r}. Known: {known}")
-
-    versions: list[dict[str, Any]] = list(app.get("versions", []))
-    if not versions:
-        raise ValueError("repo.json app has no versions[] entries")
-
-    now_iso = datetime.now().astimezone().replace(microsecond=0).isoformat()
     ipa_size = ipa_path.stat().st_size
     ipa_short_version, _ipa_build_version = read_ipa_versions(ipa_path)
     if ipa_short_version is None:
         raise ValueError("Could not read CFBundleShortVersionString from IPA")
 
-    before_app_version = str(app.get("version", "0.0.0"))
-    after_app_version = ipa_short_version
-    download_url = app.get("downloadURL") or versions[0].get("downloadURL")
-    min_os = versions[0].get("minOSVersion", "16.0")
-
-    if not versions or str(versions[0].get("version")) != after_app_version:
-        versions.insert(
-            0,
-            {
-                "version": after_app_version,
-                "date": now_iso,
-                "localizedDescription": args.description,
-                "downloadURL": download_url,
-                "size": ipa_size,
-                "minOSVersion": min_os,
-            },
+    before_app_version = str(
+        next(
+            (a.get("version", "0.0.0") for a in repo.get("apps", []) if a.get("bundleIdentifier") == args.bundle_id),
+            "0.0.0",
         )
-    else:
-        versions[0]["date"] = now_iso
-        versions[0]["localizedDescription"] = args.description
-        versions[0]["size"] = ipa_size
-        if download_url:
-            versions[0]["downloadURL"] = download_url
-
-    # Feather/AltStore clients only need the current build; long histories slow source loading.
-    app["versions"] = versions[:1]
-    app["version"] = after_app_version
-    app["versionDate"] = now_iso
-    app["versionDescription"] = args.description
+    )
+    now_z = utc_now_z()
+    normalize_repo(
+        repo,
+        version=ipa_short_version,
+        description=args.description,
+        ipa_size=ipa_size,
+        now_z=now_z,
+    )
 
     if args.dry_run:
-        print(f"[dry-run] {before_app_version} -> {after_app_version}, size={ipa_size}")
+        print(f"[dry-run] {before_app_version} -> {ipa_short_version}, size={ipa_size}")
         return 0
 
     write_json(repo_json_path, repo)
     print(f"Updated {repo_json_path}")
-    print(f"Version: {before_app_version} -> {after_app_version}")
+    print(f"Version: {before_app_version} -> {ipa_short_version}")
     print(f"IPA size: {ipa_size}")
-    print(f"IPA bundle version: {ipa_short_version}")
+    print(f"Download URL: {DOWNLOAD_URL}")
     return 0
 
 

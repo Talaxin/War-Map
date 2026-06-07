@@ -74,10 +74,17 @@ def write_jpeg(path: Path, image: Image.Image) -> None:
 
 
 def update_repo_json() -> None:
+    download_url = "https://cdn.jsdelivr.net/gh/Talaxin/War-Map@main/build/WarMap.ipa"
     repo = json.loads(REPO_JSON.read_text(encoding="utf-8"))
     repo["iconURL"] = SOURCE_ICON_URL
+    repo["tintColor"] = "007AFF"
     for app in repo.get("apps", []):
         app["iconURL"] = APP_ICON_URL
+        app["tintColor"] = "007AFF"
+        app["downloadURL"] = download_url
+        app["beta"] = False
+        if app.get("versions"):
+            app["versions"][0]["downloadURL"] = download_url
     REPO_JSON.write_text(json.dumps(repo, indent=2) + "\n", encoding="utf-8")
     print(f"repo.json source iconURL -> {SOURCE_ICON_URL}")
     print(f"repo.json app iconURL    -> {APP_ICON_URL}")
