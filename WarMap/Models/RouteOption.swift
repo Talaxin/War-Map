@@ -12,9 +12,23 @@ struct RouteOption: Identifiable, Equatable {
         "\(route.distance)-\(route.expectedTravelTime)-\(route.polyline.pointCount)"
     }
 
-    func additionalTimeLabel(preferences: DistanceUnitPreferences) -> String {
-        if additionalTime < 30 { return "Fastest" }
-        return "+\(DistanceFormatting.format(duration: additionalTime))"
+    /// Short label for the route picker card title.
+    func shortTitle(relativeTo baseline: MKRoute) -> String {
+        let timeDelta = route.expectedTravelTime - baseline.expectedTravelTime
+        if timeDelta < 1 {
+            return "Fastest"
+        }
+        if timeDelta >= 30 {
+            return "+\(DistanceFormatting.format(duration: timeDelta))"
+        }
+        let distanceDelta = route.distance - baseline.distance
+        if distanceDelta > 400 {
+            return "Longer"
+        }
+        if distanceDelta < -400 {
+            return "Shorter"
+        }
+        return "Alternate"
     }
 
     func detailLabel(preferences: DistanceUnitPreferences) -> String {

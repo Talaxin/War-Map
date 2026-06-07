@@ -1,3 +1,4 @@
+import MapKit
 import SwiftUI
 
 struct RouteOptionsPickerView: View {
@@ -5,6 +6,10 @@ struct RouteOptionsPickerView: View {
     let selectedID: String?
     let distancePreferences: DistanceUnitPreferences
     let onSelect: (RouteOption) -> Void
+
+    private var baselineRoute: MKRoute? {
+        options.min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime })?.route
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -15,11 +20,14 @@ struct RouteOptionsPickerView: View {
 
             HStack(spacing: 8) {
                 ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
+                    let title = baselineRoute.map {
+                        option.shortTitle(relativeTo: $0)
+                    } ?? "Route"
                     Button {
                         onSelect(option)
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(option.additionalTimeLabel(preferences: distancePreferences))
+                            Text(title)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(selectedID == option.id ? Color.accentColor : .primary)
 
@@ -46,7 +54,7 @@ struct RouteOptionsPickerView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(
-                        "Route \(index + 1), \(option.additionalTimeLabel(preferences: distancePreferences)), \(option.detailLabel(preferences: distancePreferences))"
+                        "Route \(index + 1), \(title), \(option.detailLabel(preferences: distancePreferences))"
                     )
                     .accessibilityAddTraits(selectedID == option.id ? .isSelected : [])
                 }

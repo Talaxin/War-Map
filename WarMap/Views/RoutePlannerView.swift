@@ -7,6 +7,9 @@ struct RoutePlannerView: View {
     @State private var showSavedDestinations = false
     @FocusState private var focusedField: RouteField?
 
+    private let chromeButtonSize: CGFloat = 44
+    private let searchRowHeight: CGFloat = 44
+
     init(settings: AppSettings) {
         _viewModel = StateObject(wrappedValue: RoutePlannerViewModel(settings: settings))
     }
@@ -37,27 +40,19 @@ struct RoutePlannerView: View {
             VStack(spacing: 0) {
                 HStack(alignment: .top, spacing: 8) {
                     VStack(spacing: 8) {
-                        Button {
+                        mapChromeButton(
+                            systemName: "gearshape.fill",
+                            accessibilityLabel: "Settings"
+                        ) {
                             showSettings = true
-                        } label: {
-                            Image(systemName: "gearshape.fill")
-                                .font(.title3)
-                                .foregroundStyle(.primary)
-                                .padding(10)
-                                .background(.regularMaterial, in: Circle())
                         }
-                        .accessibilityLabel("Settings")
 
-                        Button {
+                        mapChromeButton(
+                            systemName: "mappin.and.ellipse",
+                            accessibilityLabel: "Saved destinations"
+                        ) {
                             showSavedDestinations = true
-                        } label: {
-                            Image(systemName: "mappin.and.ellipse")
-                                .font(.title3)
-                                .foregroundStyle(.primary)
-                                .padding(10)
-                                .background(.regularMaterial, in: Circle())
                         }
-                        .accessibilityLabel("Saved destinations")
                     }
 
                     Group {
@@ -71,15 +66,12 @@ struct RoutePlannerView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    // Compass aligned with settings gear (replaces built-in map compass).
-                    Button(action: viewModel.resetMapNorth) {
-                        Image(systemName: "location.north.fill")
-                            .font(.title3)
-                            .foregroundStyle(.primary)
-                            .padding(10)
-                            .background(.regularMaterial, in: Circle())
+                    mapChromeButton(
+                        systemName: "compass.drawing",
+                        accessibilityLabel: "Reset map to north"
+                    ) {
+                        viewModel.resetMapNorth()
                     }
-                    .accessibilityLabel("Reset map to north")
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
@@ -186,14 +178,45 @@ struct RoutePlannerView: View {
         }
     }
 
+    private func mapChromeButton(
+        systemName: String,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: chromeButtonSize, height: chromeButtonSize)
+                .background(.regularMaterial, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
     private func clearFieldButton(action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: "xmark.circle.fill")
                 .font(.body)
                 .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Clear")
+    }
+
+    private func searchRowActionButton(
+        systemName: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.body.weight(.medium))
+                .foregroundStyle(tint)
+                .frame(width: chromeButtonSize, height: searchRowHeight)
+        }
+        .buttonStyle(.plain)
     }
 
     private var collapsedSearchBar: some View {
@@ -220,11 +243,10 @@ struct RoutePlannerView: View {
 
     private var expandedSearchCard: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
                 Circle()
                     .fill(Color.blue)
                     .frame(width: 10, height: 10)
-                    .padding(.top, 6)
                 VStack(spacing: 0) {
                     HStack(spacing: 6) {
                         startFieldBlock
@@ -232,27 +254,26 @@ struct RoutePlannerView: View {
                             clearFieldButton(action: viewModel.clearStart)
                         }
                     }
+                    .frame(height: searchRowHeight)
                     if viewModel.focusedField == .start, !viewModel.searchCompletions.isEmpty {
                         suggestionsScroll
                     }
                 }
-                Button(action: viewModel.useCurrentLocationForStart) {
-                    Image(systemName: "location.fill")
-                        .font(.body)
-                        .foregroundStyle(viewModel.startUsesCurrentLocation ? .blue : .secondary)
-                }
-                .padding(.top, 2)
+                searchRowActionButton(
+                    systemName: "location.fill",
+                    tint: viewModel.startUsesCurrentLocation ? .blue : .secondary,
+                    action: viewModel.useCurrentLocationForStart
+                )
             }
             .padding(.horizontal, 12)
             .padding(.top, 10)
 
             Divider().padding(.leading, 32)
 
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
                 Circle()
                     .fill(Color.red)
                     .frame(width: 10, height: 10)
-                    .padding(.top, 6)
                 VStack(spacing: 0) {
                     HStack(spacing: 6) {
                         destinationFieldBlock
@@ -260,16 +281,16 @@ struct RoutePlannerView: View {
                             clearFieldButton(action: viewModel.clearDestination)
                         }
                     }
+                    .frame(height: searchRowHeight)
                     if viewModel.focusedField == .destination, !viewModel.searchCompletions.isEmpty {
                         suggestionsScroll
                     }
                 }
-                Button(action: viewModel.swapEndpoints) {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 2)
+                searchRowActionButton(
+                    systemName: "arrow.up.arrow.down",
+                    tint: .secondary,
+                    action: viewModel.swapEndpoints
+                )
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -296,7 +317,7 @@ struct RoutePlannerView: View {
                     }
             }
         }
-        .frame(minHeight: 28)
+        .frame(maxWidth: .infinity, minHeight: searchRowHeight, alignment: .leading)
     }
 
     private var destinationFieldBlock: some View {
@@ -307,7 +328,7 @@ struct RoutePlannerView: View {
             .onChange(of: viewModel.destinationQuery) { _ in
                 viewModel.handleDestinationQueryChange()
             }
-            .frame(minHeight: 28)
+            .frame(maxWidth: .infinity, minHeight: searchRowHeight, alignment: .leading)
     }
 
     private var suggestionsScroll: some View {
