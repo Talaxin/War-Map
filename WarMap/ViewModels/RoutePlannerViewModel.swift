@@ -469,69 +469,89 @@ final class RoutePlannerViewModel: ObservableObject {
     }
 
     private func buildRouteOptions(from candidates: [MKRoute]) -> [RouteOption] {
-        guard let fastest = candidates.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
+        guard let fastestRoute = candidates.min(by: { $0.expectedTravelTime < $1.expectedTravelTime }) else {
             return []
         }
 
-        let baselineTime = fastest.expectedTravelTime
+        let baselineTime = fastestRoute.expectedTravelTime
+
         struct Scored {
             let route: MKRoute
             let newMeters: CLLocationDistance
             let additionalTime: TimeInterval
+
+            var id: String { RouteOption.fingerprint(route) }
         }
 
-        let scored: [Scored] = candidates.map { route in
-            Scored(
+        var scored: [Scored] = []
+        var byID: [String: Scored] = [:]
+        for route in candidates {
+            let item = Scored(
                 route: route,
                 newMeters: locationManager.estimateNewDistanceMeters(along: route.polyline),
                 additionalTime: max(0, route.expectedTravelTime - baselineTime)
             )
+            if let existing = byID[item.id] {
+                if item.additionalTime < existing.additionalTime {
+                    byID[item.id] = item
+                }
+            } else {
+                byID[item.id] = item
+            }
         }
+        scored = Array(byID.values)
 
         let percent = max(0, min(100, settings.newRoadPercent))
         let slider = Double(percent) / 100.0
+        let minNew = scored.map(\.newMeters).min() ?? 0
+        let maxNew = scored.map(\.newMeters).max() ?? 0
+        let targetNew = minNew + slider * (maxNew - minNew)
 
-        let pool: [Scored]
-        if slider <= 0 {
-            pool = scored
-        } else {
-            let minNew = scored.map(\.newMeters).min() ?? 0
-            let maxNew = scored.map(\.newMeters).max() ?? 0
-            let spectrumTarget = minNew + slider * (maxNew - minNew)
-            let absoluteTarget = slider * fastest.distance
-            let targetNew = min(max(spectrumTarget, absoluteTarget), maxNew)
+        var picks: [Scored] = []
 
-            pool = scored
-                .sorted { lhs, rhs in
-                    let lhsFit = abs(lhs.newMeters - targetNew)
-                    let rhsFit = abs(rhs.newMeters - targetNew)
-                    if abs(lhsFit - rhsFit) > 1 {
-                        return lhsFit < rhsFit
-                    }
-                    return lhs.additionalTime < rhs.additionalTime
-                }
-                .prefix(8)
-                .map { $0 }
+        func appendUnique(_ candidate: Scored?) {
+            guard let candidate else { return }
+            guard !picks.contains(where: { $0.id == candidate.id }) else { return }
+            picks.append(candidate)
         }
 
-        var options: [RouteOption] = []
-        var seenIDs: Set<String> = []
-        for item in pool.sorted(by: { $0.additionalTime < $1.additionalTime }) {
-            let id = RouteOption.fingerprint(item.route)
-            guard !seenIDs.contains(id) else { continue }
-            seenIDs.insert(id)
-            options.append(
+        appendUnique(scored.min(by: { $0.route.expectedTravelTime < $1.route.expectedTravelTime }))
+        appendUnique(
+            scored.min(by: {
+                let lhsFit = abs($0.newMeters - targetNew)
+                let rhsFit = abs($1.newMeters - targetNew)
+                if abs(lhsFit - rhsFit) > 1 { return lhsFit < rhsFit }
+                return $0.additionalTime < $1.additionalTime
+            })
+        )
+        appendUnique(
+            scored.max(by: {
+                if abs($0.newMeters - $1.newMeters) > 1 { return $0.newMeters < $1.newMeters }
+                return $0.additionalTime < $1.additionalTime
+            })
+        )
+
+        for item in scored.sorted(by: {
+            if abs($0.additionalTime - $1.additionalTime) > 1 {
+                return $0.additionalTime < $1.additionalTime
+            }
+            return $0.newMeters > $1.newMeters
+        }) {
+            appendUnique(item)
+            if picks.count == 3 { break }
+        }
+
+        return picks
+            .sorted { $0.additionalTime < $1.additionalTime }
+            .prefix(3)
+            .map {
                 RouteOption(
-                    id: id,
-                    route: item.route,
-                    additionalTime: item.additionalTime,
-                    newRoadMeters: item.newMeters
+                    id: $0.id,
+                    route: $0.route,
+                    additionalTime: $0.additionalTime,
+                    newRoadMeters: $0.newMeters
                 )
-            )
-            if options.count == 3 { break }
-        }
-
-        return options
+            }
     }
 
     private func preferredDefaultOption(from options: [RouteOption], previousID: String?) -> RouteOption? {

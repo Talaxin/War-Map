@@ -63,6 +63,16 @@ final class RouteDirectionsService {
                 scenic.allowTollRoads = false
                 discoveryPreferences.append(scenic)
             }
+            if preferences.allowFerries {
+                var avoidFerries = preferences
+                avoidFerries.allowFerries = false
+                discoveryPreferences.append(avoidFerries)
+            }
+            if !preferences.allowHighways {
+                var preferHighways = preferences
+                preferHighways.allowHighways = true
+                discoveryPreferences.append(preferHighways)
+            }
 
             for variant in discoveryPreferences {
                 if let alternates = try? await fetchRoutes(

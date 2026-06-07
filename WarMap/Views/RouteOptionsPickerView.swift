@@ -21,7 +21,7 @@ struct RouteOptionsPickerView: View {
             HStack(spacing: 8) {
                 ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
                     let title = baselineRoute.map {
-                        option.shortTitle(relativeTo: $0)
+                        option.shortTitle(relativeTo: $0, preferences: distancePreferences)
                     } ?? "Route"
                     Button {
                         onSelect(option)

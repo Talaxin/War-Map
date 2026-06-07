@@ -38,42 +38,13 @@ struct RoutePlannerView: View {
             .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack(alignment: .top, spacing: 8) {
-                    VStack(spacing: 8) {
-                        mapChromeButton(
-                            systemName: "gearshape.fill",
-                            accessibilityLabel: "Settings"
-                        ) {
-                            showSettings = true
-                        }
-
-                        mapChromeButton(
-                            systemName: "mappin.and.ellipse",
-                            accessibilityLabel: "Saved destinations"
-                        ) {
-                            showSavedDestinations = true
-                        }
-                    }
-
-                    Group {
-                        if viewModel.isSearchPanelExpanded {
-                            expandedSearchCard
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                        } else {
-                            collapsedSearchBar
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    // Reserve space for the native MKMapView compass (top-right).
-                    Color.clear
-                        .frame(width: chromeButtonSize, height: chromeButtonSize)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
+                if viewModel.isSearchPanelExpanded {
+                    expandedSearchChrome
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                } else {
+                    collapsedSearchChrome
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
 
                 if let error = viewModel.searchError {
                     Text(error)
@@ -115,7 +86,7 @@ struct RoutePlannerView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if viewModel.hasRoute || viewModel.isCalculatingRoute {
                 VStack(spacing: 8) {
-                    if viewModel.routeOptions.count > 1, !viewModel.isNavigating {
+                    if !viewModel.routeOptions.isEmpty, !viewModel.isNavigating {
                         RouteOptionsPickerView(
                             options: viewModel.routeOptions,
                             selectedID: viewModel.selectedRouteOptionID,
@@ -220,6 +191,71 @@ struct RoutePlannerView: View {
         .buttonStyle(.plain)
     }
 
+    private var collapsedSearchChrome: some View {
+        HStack(alignment: .center, spacing: 8) {
+            mapChromeButton(
+                systemName: "gearshape.fill",
+                accessibilityLabel: "Settings"
+            ) {
+                showSettings = true
+            }
+
+            collapsedSearchBar
+                .frame(maxWidth: .infinity)
+
+            compassSpacer
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+    }
+
+    private var expandedSearchChrome: some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 0) {
+                Color.clear.frame(height: 10)
+                mapChromeButton(
+                    systemName: "gearshape.fill",
+                    accessibilityLabel: "Settings"
+                ) {
+                    showSettings = true
+                }
+                .frame(height: searchRowHeight)
+                Divider().frame(height: 1)
+                mapChromeButton(
+                    systemName: "mappin.and.ellipse",
+                    accessibilityLabel: "Saved destinations"
+                ) {
+                    showSavedDestinations = true
+                }
+                .frame(height: searchRowHeight)
+                Color.clear.frame(height: 10)
+            }
+
+            expandedSearchCard
+                .frame(maxWidth: .infinity)
+
+            VStack(spacing: 0) {
+                Color.clear.frame(height: 10)
+                compassSpacer
+                    .frame(height: searchRowHeight)
+                Divider().frame(height: 1)
+                Color.clear
+                    .frame(width: chromeButtonSize, height: searchRowHeight)
+                    .accessibilityHidden(true)
+                Color.clear.frame(height: 10)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+    }
+
+    private var compassSpacer: some View {
+        Color.clear
+            .frame(width: chromeButtonSize, height: chromeButtonSize)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
     private var collapsedSearchBar: some View {
         Button(action: viewModel.expandSearchPanel) {
             HStack(spacing: 10) {
@@ -269,7 +305,7 @@ struct RoutePlannerView: View {
             .padding(.horizontal, 12)
             .padding(.top, 10)
 
-            Divider().padding(.leading, 32)
+            Divider().padding(.leading, 22)
 
             HStack(alignment: .center, spacing: 10) {
                 Circle()
@@ -294,7 +330,7 @@ struct RoutePlannerView: View {
                 )
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.bottom, 10)
         }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
