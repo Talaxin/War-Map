@@ -16,24 +16,24 @@
       "developerName": "Talaxin",
       "subtitle": "Wardriving navigation & live directions",
       "localizedDescription": "Plan routes, pick from alternate paths, and navigate with turn-by-turn guidance. Remembers roads you have driven.",
-      "version": "0.3.32",
-      "versionDate": "2026-06-07T20:47:20Z",
-      "versionDescription": "War Map v0.3.32.",
+      "version": "0.3.33",
+      "versionDate": "2026-06-08T01:02:04Z",
+      "versionDescription": "War Map v0.3.33.",
       "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
       "iconURL": "https://raw.githubusercontent.com/Talaxin/War-Map/main/icon.jpeg",
       "tintColor": "007AFF",
       "category": "navigation",
       "versions": [
         {
-          "version": "0.3.32",
-          "date": "2026-06-07T20:47:20Z",
-          "localizedDescription": "War Map v0.3.32.",
+          "version": "0.3.33",
+          "date": "2026-06-08T01:02:04Z",
+          "localizedDescription": "War Map v0.3.33.",
           "downloadURL": "https://github.com/Talaxin/War-Map/raw/main/build/WarMap.ipa",
-          "size": 1063741,
+          "size": 1065904,
           "minOSVersion": "16.0"
         }
       ],
-      "size": 1063741,
+      "size": 1065904,
       "beta": false,
       "appPermissions": {
         "privacy": {
