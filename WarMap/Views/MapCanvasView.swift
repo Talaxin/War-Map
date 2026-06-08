@@ -138,26 +138,38 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         if followUser {
-            if mapView.userTrackingMode != .none {
-                context.coordinator.setProgrammaticChange(true)
-                mapView.setUserTrackingMode(.none, animated: false)
-                context.coordinator.setProgrammaticChange(false)
-            }
-
-            let shouldRecenter = followChanged
-                || trackingModeChanged
-                || centerRevisionChanged
-                || context.coordinator.shouldRecenterForUserLocation(parent: self)
-            if shouldRecenter, let location = userLocation {
-                context.coordinator.setProgrammaticChange(true)
-                let camera = mapView.camera.copy() as! MKMapCamera
-                camera.centerCoordinate = location.coordinate
-                if trackingMode == .followWithHeading, location.course >= 0 {
-                    camera.heading = location.course
+            if vehicleType.usesSystemUserLocation {
+                let mode: MKUserTrackingMode = trackingMode == .followWithHeading ? .followWithHeading : .follow
+                if mapView.userTrackingMode != mode
+                    || followChanged
+                    || trackingModeChanged
+                    || centerRevisionChanged {
+                    context.coordinator.setProgrammaticChange(true)
+                    mapView.setUserTrackingMode(mode, animated: followChanged || trackingModeChanged)
+                    context.coordinator.setProgrammaticChange(false)
                 }
-                mapView.setCamera(camera, animated: followChanged || trackingModeChanged || centerRevisionChanged)
-                context.coordinator.recordUserLocation(location)
-                context.coordinator.setProgrammaticChange(false)
+            } else {
+                if mapView.userTrackingMode != .none {
+                    context.coordinator.setProgrammaticChange(true)
+                    mapView.setUserTrackingMode(.none, animated: false)
+                    context.coordinator.setProgrammaticChange(false)
+                }
+
+                let shouldRecenter = followChanged
+                    || trackingModeChanged
+                    || centerRevisionChanged
+                    || context.coordinator.shouldRecenterForUserLocation(parent: self)
+                if shouldRecenter, let location = userLocation {
+                    context.coordinator.setProgrammaticChange(true)
+                    let camera = mapView.camera.copy() as! MKMapCamera
+                    camera.centerCoordinate = location.coordinate
+                    if trackingMode == .followWithHeading, location.course >= 0 {
+                        camera.heading = location.course
+                    }
+                    mapView.setCamera(camera, animated: followChanged || trackingModeChanged || centerRevisionChanged)
+                    context.coordinator.recordUserLocation(location)
+                    context.coordinator.setProgrammaticChange(false)
+                }
             }
         } else {
             mapView.isRotateEnabled = true
@@ -309,6 +321,15 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         func refreshUserLocationAnnotation(on mapView: MKMapView) {
+            if parent.vehicleType.usesSystemUserLocation {
+                if let annotation = mapView.annotations.compactMap({ $0 as? SnappedUserLocationAnnotation }).first {
+                    mapView.removeAnnotation(annotation)
+                }
+                mapView.showsUserLocation = true
+                return
+            }
+
+            mapView.showsUserLocation = false
             if let annotation = mapView.annotations.compactMap({ $0 as? SnappedUserLocationAnnotation }).first {
                 mapView.removeAnnotation(annotation)
                 mapView.addAnnotation(annotation)
@@ -330,6 +351,14 @@ struct MapCanvasView: UIViewRepresentable {
         }
 
         func updateSnappedUserLocation(on mapView: MKMapView, location: CLLocation?, vehicleType: VehicleType) {
+            if vehicleType.usesSystemUserLocation {
+                mapView.showsUserLocation = true
+                if let existing = mapView.annotations.compactMap({ $0 as? SnappedUserLocationAnnotation }).first {
+                    mapView.removeAnnotation(existing)
+                }
+                return
+            }
+
             mapView.showsUserLocation = location == nil
 
             guard let location else {
